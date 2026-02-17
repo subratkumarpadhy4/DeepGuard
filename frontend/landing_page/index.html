@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepGuard AI | Digital Forensic Defense</title>
+    <title>DeepGuard AI | Enterprise Verification</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #070914;
-            --primary: #5b21b6;
-            --secondary: #3b82f6;
-            --accent: #22d3ee;
-            --text-main: #f8fafc;
-            --text-soft: #94a3b8;
+            --bg: #ffffff;
+            --bg-subtle: #f9fafb;
+            --text-heading: #111827;
+            --text-body: #4b5563;
+            --primary: #2563eb;
+            --border: #e5e7eb;
         }
 
         * {
@@ -26,33 +26,11 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-main);
-            overflow-x: hidden;
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text-heading);
             line-height: 1.5;
-        }
-
-        /* BACKGROUND EFFECTS */
-        .aurora {
-            position: fixed;
-            top: -20%;
-            left: -20%;
-            width: 140vw;
-            height: 140vh;
-            background: radial-gradient(circle at 50% 50%, rgba(91, 33, 182, 0.15), rgba(59, 130, 246, 0.1), transparent 60%);
-            z-index: -1;
-            animation: drift 20s infinite alternate;
-        }
-
-        @keyframes drift {
-            0% {
-                transform: translate(0, 0) scale(1);
-            }
-
-            100% {
-                transform: translate(-20px, 20px) scale(1.1);
-            }
+            -webkit-font-smoothing: antialiased;
         }
 
         /* NAVBAR */
@@ -60,172 +38,221 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 40px;
-            backdrop-filter: blur(10px);
-            background: rgba(7, 9, 20, 0.6);
-            position: fixed;
-            width: 100%;
-            z-index: 100;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px 60px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .logo {
             font-weight: 700;
             font-size: 1.25rem;
-            letter-spacing: -0.5px;
             display: flex;
             align-items: center;
             gap: 10px;
+            color: var(--text-heading);
         }
 
-        .logo span {
-            background: linear-gradient(to right, #a78bfa, #22d3ee);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 6px;
         }
 
         .nav-links a {
-            color: var(--text-soft);
+            color: var(--text-body);
             text-decoration: none;
-            margin-left: 30px;
-            font-size: 0.9rem;
-            transition: 0.3s;
+            margin-left: 32px;
+            font-size: 0.95rem;
             font-weight: 500;
+            transition: color 0.2s;
         }
 
         .nav-links a:hover {
-            color: white;
+            color: var(--primary);
         }
 
-        .btn-premium {
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
-            padding: 10px 24px;
-            border-radius: 8px;
+        .btn-primary {
+            background: var(--text-heading);
             color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 0.9rem;
-            transition: 0.3s;
-            box-shadow: 0 4px 20px rgba(91, 33, 182, 0.4);
+            transition: 0.2s;
+            border: 1px solid var(--text-heading);
         }
 
-        .btn-premium:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(91, 33, 182, 0.6);
+        .btn-primary:hover {
+            background: transparent;
+            color: var(--text-heading);
         }
 
         /* HERO */
         header {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             text-align: center;
-            padding: 0 20px;
-            position: relative;
+            padding: 120px 20px 80px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .tagline {
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 99px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 24px;
         }
 
         h1 {
-            font-size: 4.5rem;
+            font-size: 3.75rem;
             font-weight: 800;
-            letter-spacing: -2px;
+            letter-spacing: -1.5px;
             line-height: 1.1;
             margin-bottom: 24px;
-            background: linear-gradient(to bottom right, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-heading);
         }
 
         p.hero-text {
             font-size: 1.25rem;
-            color: var(--text-soft);
-            max-width: 600px;
-            margin-bottom: 40px;
+            color: var(--text-body);
+            max-width: 640px;
+            margin: 0 auto 32px;
+            font-weight: 400;
         }
 
-        /* CARDS */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
+        .hero-btns {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .hero-btns .btn-primary {
+            padding: 14px 28px;
+            font-size: 1rem;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-body);
+            border: 1px solid var(--border);
+            padding: 14px 28px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-heading);
+            color: var(--text-heading);
+        }
+
+        /* SECTION */
+        section {
+            background: var(--bg-subtle);
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 80px 40px;
+            padding: 0 40px;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 40px;
-            border-radius: 20px;
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(20px);
+        .section-header {
+            margin-bottom: 60px;
+            max-width: 600px;
         }
 
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            transform: translateY(-10px);
-            border-color: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        .section-header h2 {
+            font-size: 2.25rem;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
         }
 
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.06), transparent 40%);
-            opacity: 0;
-            transition: opacity 0.5s;
-            pointer-events: none;
+        .section-header p {
+            font-size: 1.1rem;
+            color: var(--text-body);
         }
 
-        .glass-card:hover::before {
-            opacity: 1;
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        .card {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            /* Subtle shadow */
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border-color: #d1d5db;
         }
 
         .icon-box {
-            width: 50px;
-            height: 50px;
-            background: rgba(34, 211, 238, 0.1);
-            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            background: #f3f4f6;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: var(--accent);
+            margin-bottom: 24px;
+            color: var(--text-heading);
         }
 
         h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
+            font-size: 1.25rem;
+            margin-bottom: 12px;
             font-weight: 600;
         }
 
         p.card-text {
-            color: var(--text-soft);
             font-size: 1rem;
+            color: var(--text-body);
             line-height: 1.6;
         }
 
         /* FOOTER */
         footer {
             padding: 60px 40px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-soft);
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid white;
+        }
+
+        .footer-text {
+            color: var(--text-body);
             font-size: 0.9rem;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 800px) {
             h1 {
-                font-size: 3rem;
+                font-size: 2.5rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
             }
 
             .nav-links {
@@ -237,69 +264,65 @@
 
 <body>
 
-    <div class="aurora"></div>
-
     <nav>
         <div class="logo">
-            <div
-                style="width: 24px; height: 24px; background: linear-gradient(135deg, #a78bfa, #22d3ee); border-radius: 6px;">
-            </div>
+            <div class="logo-icon"></div>
             <span>DeepGuard</span>
         </div>
         <div class="nav-links">
-            <a href="#">Technology</a>
+            <a href="#">Product</a>
+            <a href="#">Solutions</a>
+            <a href="#">Safety</a>
             <a href="#">Enterprise</a>
-            <a href="#">Research</a>
-            <a href="#">Docs</a>
         </div>
-        <a href="#" class="btn-premium">Download v1.2</a>
+        <a href="#" class="btn-primary">Download App</a>
     </nav>
 
     <header>
-        <h1>Security for the <br>Synthetic Age.</h1>
-        <p class="hero-text">Real-time deepfake detection and biometric verification for critical communications.</p>
-        <div style="display: flex; gap: 20px;">
-            <a href="#" class="btn-premium" style="padding: 15px 35px; font-size: 1rem;">Get Protected</a>
-            <a href="#"
-                style="padding: 15px 35px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; text-decoration: none; font-weight: 500; transition: 0.3s;">View
-                Demo</a>
+        <span class="tagline">Now Available in DeepGuard 1.2</span>
+        <h1>Secure Communications <br>in the Age of AI</h1>
+        <p class="hero-text">Enterprise-grade deepfake detection and biometric verification for your most critical video
+            calls.</p>
+        <div class="hero-btns">
+            <a href="#" class="btn-primary">Get Started</a>
+            <a href="#" class="btn-secondary">View Documentation</a>
         </div>
     </header>
 
-    <div class="grid">
-        <div class="glass-card" onmousemove="handleMouseMove(event)">
-            <div class="icon-box">⚡</div>
-            <h3>Liveness Forensics</h3>
-            <p class="card-text">Our proprietary engine analyzes sub-perceptual micro-movements (EAR) and skin texture
-                variance to distinguish humans from avatars.</p>
+    <section>
+        <div class="container">
+            <div class="section-header">
+                <h2>Advanced Forensics</h2>
+                <p>Designed for security teams, verified by experts.</p>
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <div class="icon-box">⚡</div>
+                    <h3>Live Verification</h3>
+                    <p class="card-text">Proprietary liveness detection analyzes micro-expressions and blink patterns to
+                        verify human presence.</p>
+                </div>
+                <div class="card">
+                    <div class="icon-box">🎙️</div>
+                    <h3>Voice Analysis</h3>
+                    <p class="card-text">Spectral centroid tracking identifies synthetic audio signatures and
+                        AI-generated voice clones instantly.</p>
+                </div>
+                <div class="card">
+                    <div class="icon-box">🔒</div>
+                    <h3>Threat Isolation</h3>
+                    <p class="card-text">Real-time prevention of social engineering vectors and phishing attacks at the
+                        network edge.</p>
+                </div>
+            </div>
         </div>
-        <div class="glass-card" onmousemove="handleMouseMove(event)">
-            <div class="icon-box">🎙️</div>
-            <h3>Voice Authenticity</h3>
-            <p class="card-text">Spectral centroid tracking and pitch variance analysis identify synthetic audio
-                signatures in real-time voIP streams.</p>
-        </div>
-        <div class="glass-card" onmousemove="handleMouseMove(event)">
-            <div class="icon-box">🛡️</div>
-            <h3>Threat Prevention</h3>
-            <p class="card-text">Zero-latency phishing detection and social engineering vector analysis engine blocking
-                threats at the network layer.</p>
-        </div>
-    </div>
+    </section>
 
     <footer>
-        <p>&copy; 2026 DeepGuard AI. Engineering Trust.</p>
+        <div class="logo" style="font-size: 1rem;">DeepGuard</div>
+        <div class="footer-text">&copy; 2026 DeepGuard Inc. All rights reserved.</div>
     </footer>
 
-    <script>
-        function handleMouseMove(e) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
-            e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
-        }
-    </script>
 </body>
 
 </html>
