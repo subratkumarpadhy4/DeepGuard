@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepGuard AI | Digital Forensic Defense</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #070914;
+            --primary: #5b21b6;
+            --secondary: #3b82f6;
+            --accent: #22d3ee;
+            --text-main: #f8fafc;
+            --text-soft: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* BACKGROUND EFFECTS */
+        .aurora {
+            position: fixed;
+            top: -20%;
+            left: -20%;
+            width: 140vw;
+            height: 140vh;
+            background: radial-gradient(circle at 50% 50%, rgba(91, 33, 182, 0.15), rgba(59, 130, 246, 0.1), transparent 60%);
+            z-index: -1;
+            animation: drift 20s infinite alternate;
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(-20px, 20px) scale(1.1);
+            }
+        }
+
+        /* NAVBAR */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            backdrop-filter: blur(10px);
+            background: rgba(7, 9, 20, 0.6);
+            position: fixed;
+            width: 100%;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            background: linear-gradient(to right, #a78bfa, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links a {
+            color: var(--text-soft);
+            text-decoration: none;
+            margin-left: 30px;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            padding: 10px 24px;
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            box-shadow: 0 4px 20px rgba(91, 33, 182, 0.4);
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(91, 33, 182, 0.6);
+        }
+
+        /* HERO */
+        header {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 4.5rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(to bottom right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.hero-text {
+            font-size: 1.25rem;
+            color: var(--text-soft);
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        /* CARDS */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 40px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 20px;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-10px);
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.06), transparent 40%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+
+        .glass-card:hover::before {
+            opacity: 1;
+        }
+
+        .icon-box {
+            width: 50px;
+            height: 50px;
+            background: rgba(34, 211, 238, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        p.card-text {
+            color: var(--text-soft);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* FOOTER */
+        footer {
+            padding: 60px 40px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-soft);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="aurora"></div>
+
+    <nav>
+        <div class="logo">
+            <div
+                style="width: 24px; height: 24px; background: linear-gradient(135deg, #a78bfa, #22d3ee); border-radius: 6px;">
+            </div>
+            <span>DeepGuard</span>
+        </div>
+        <div class="nav-links">
+            <a href="#">Technology</a>
+            <a href="#">Enterprise</a>
+            <a href="#">Research</a>
+            <a href="#">Docs</a>
+        </div>
+        <a href="#" class="btn-premium">Download v1.2</a>
+    </nav>
+
+    <header>
+        <h1>Security for the <br>Synthetic Age.</h1>
+        <p class="hero-text">Real-time deepfake detection and biometric verification for critical communications.</p>
+        <div style="display: flex; gap: 20px;">
+            <a href="#" class="btn-premium" style="padding: 15px 35px; font-size: 1rem;">Get Protected</a>
+            <a href="#"
+                style="padding: 15px 35px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; text-decoration: none; font-weight: 500; transition: 0.3s;">View
+                Demo</a>
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="glass-card" onmousemove="handleMouseMove(event)">
+            <div class="icon-box">⚡</div>
+            <h3>Liveness Forensics</h3>
+            <p class="card-text">Our proprietary engine analyzes sub-perceptual micro-movements (EAR) and skin texture
+                variance to distinguish humans from avatars.</p>
+        </div>
+        <div class="glass-card" onmousemove="handleMouseMove(event)">
+            <div class="icon-box">🎙️</div>
+            <h3>Voice Authenticity</h3>
+            <p class="card-text">Spectral centroid tracking and pitch variance analysis identify synthetic audio
+                signatures in real-time voIP streams.</p>
+        </div>
+        <div class="glass-card" onmousemove="handleMouseMove(event)">
+            <div class="icon-box">🛡️</div>
+            <h3>Threat Prevention</h3>
+            <p class="card-text">Zero-latency phishing detection and social engineering vector analysis engine blocking
+                threats at the network layer.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 DeepGuard AI. Engineering Trust.</p>
+    </footer>
+
+    <script>
+        function handleMouseMove(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+            e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+        }
+    </script>
+</body>
+
+</html>
