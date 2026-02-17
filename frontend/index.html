@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepGuard AI</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #1c1c1e;
+            color: white;
+            width: 350px;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #34c759 0%, #30b350 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(52, 199, 89, 0.3);
+        }
+
+        .status-card.danger {
+            background: linear-gradient(135deg, #ff3b30 0%, #d7332b 100%);
+            box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
+        }
+
+        .status-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 10px 0;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2c2c2e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .label {
+            font-size: 0.9rem;
+            color: #d1d1d6;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #3a3a3c;
+            border-radius: 34px;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: .4s;
+        }
+
+        input:checked+.slider {
+            background-color: #34c759;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
+        }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background-color: #2c2c2e;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #8e8e93;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="logo">🛡️ DeepGuard AI</div>
+        <div style="font-size: 0.8rem; color: #8e8e93;">v1.1</div>
+    </div>
+
+    <!-- Active Monitoring Status -->
+    <div class="status-card" id="statusCard">
+        <div class="status-title">System Status</div>
+        <div class="status-value">SECURE</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Monitoring Active Streams</div>
+    </div>
+
+    <div class="toggle-row">
+        <span class="label">Real-time Video Scan</span>
+        <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="toggle-row">
+        <span class="label">Audio Fraud Detection</span>
+        <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="toggle-row">
+        <span class="label">Head Pose Verification</span>
+        <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-num">0</div>
+            <div class="stat-label">Risks Blocked</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">12ms</div>
+            <div class="stat-label">Latency</div>
+        </div>
+    </div>
+
+</body>
+
+</html>

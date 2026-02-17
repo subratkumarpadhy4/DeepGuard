@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DeepGuard-AI Verification Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 50px;
+            text-align: center;
+        }
+
+        .box {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+
+        #status {
+            font-weight: bold;
+            color: gray;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>DeepGuard-AI Connectivity Test</h1>
+    <p>This page simulates a video call verification request.</p>
+
+    <div class="box">
+        <h3>Camera Stream Status</h3>
+        <video id="testVideo" playsinline autoplay muted style="width: 100%; background: #000; height: 300px;"></video>
+        <br><br>
+        <button id="startBtn">🔴 Start Mock Call</button>
+        <p id="status">Waiting for camera permission...</p>
+    </div>
+
+    <div class="box">
+        <h3>Live AI Analysis</h3>
+        <div id="live-risk-display" style="font-size: 24px; font-weight: bold; color: #555;">Waiting for video stream...
+        </div>
+        <p id="risk-details" style="color: #666;"></p>
+    </div>
+
+    <div class="box">
+        <h3>Console Output (Check DevTools)</h3>
+        <p>Open Developer Tools (F12) > Console to see if "Interceptor" logs appear.</p>
+    </div>
+
+    <!-- Inject Interceptor for Testing -->
+    <script src="frontend/interceptor.js"></script>
+
+    <script>
+        const video = document.getElementById('testVideo');
+        const btn = document.getElementById('startBtn');
+        const status = document.getElementById('status');
+
+        btn.addEventListener('click', async () => {
+            try {
+                status.innerText = "Requesting Camera...";
+
+                // This call triggers navigator.mediaDevices.getUserMedia
+                // If DeepGuard is working, it will intercept this call.
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+                video.srcObject = stream;
+                status.innerText = "✅ Stream Active. DeepGuard should be analyzing now.";
+                status.style.color = "green";
+
+            } catch (err) {
+                status.innerText = "❌ Error: " + err.message;
+                status.style.color = "red";
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+
+</html>
