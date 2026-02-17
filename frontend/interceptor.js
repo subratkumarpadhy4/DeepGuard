@@ -283,6 +283,69 @@ function processStreamForAnalysis(stream) {
 
     if (audioTrack) {
         console.log("[DeepGuard] Capturing Audio Track:", audioTrack.label);
+
+        // Set up Web Audio API for audio analysis
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioStream = new MediaStream([audioTrack]);
+        const source = audioContext.createMediaStreamSource(audioStream);
+
+        // Create a script processor for audio capture
+        const bufferSize = 4096;
+        const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+        let audioBuffer = [];
+        let lastAudioSendTime = Date.now();
+
+        processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+
+            // Accumulate audio samples
+            audioBuffer.push(...inputData);
+
+            // Send audio every 2 seconds
+            const now = Date.now();
+            if (now - lastAudioSendTime > 2000 && audioBuffer.length > 0) {
+                const activeSocket = window.deepGuardSocket || socket;
+                if (activeSocket && activeSocket.readyState === WebSocket.OPEN) {
+                    try {
+                        // Convert float32 audio to int16 PCM
+                        const int16Array = new Int16Array(audioBuffer.length);
+                        for (let i = 0; i < audioBuffer.length; i++) {
+                            int16Array[i] = Math.max(-32768, Math.min(32767, audioBuffer[i] * 32768));
+                        }
+
+                        // Convert to base64
+                        const audioBytes = new Uint8Array(int16Array.buffer);
+                        let binary = '';
+                        for (let i = 0; i < audioBytes.byteLength; i++) {
+                            binary += String.fromCharCode(audioBytes[i]);
+                        }
+                        const base64Audio = btoa(binary);
+
+                        // Send to backend
+                        activeSocket.send(JSON.stringify({
+                            type: "audio_chunk",
+                            audio_payload: base64Audio,
+                            sample_rate: audioContext.sampleRate
+                        }));
+
+                        console.log(`[DeepGuard] Sent audio chunk: ${audioBuffer.length} samples @ ${audioContext.sampleRate}Hz`);
+
+                    } catch (err) {
+                        console.error("[DeepGuard] Audio processing error:", err);
+                    }
+                }
+
+                // Reset buffer
+                audioBuffer = [];
+                lastAudioSendTime = now;
+            }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+
+        console.log("[DeepGuard] Audio analysis initialized @ " + audioContext.sampleRate + "Hz");
     }
 }
 

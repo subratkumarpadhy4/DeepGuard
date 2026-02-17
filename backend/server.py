@@ -4,6 +4,8 @@ import base64
 import json
 import time
 import mediapipe as mp
+import librosa
+import scipy.signal
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -79,6 +81,97 @@ def decode_image(base64_string):
     except Exception as e:
         print(f"Error decoding image: {e}")
         return None
+
+def analyze_audio_liveness(audio_data, sample_rate, state):
+    """
+    Analyzes audio for AI-generated voice detection using spectral analysis.
+    
+    Args:
+        audio_data: numpy array of audio samples
+        sample_rate: sampling rate (typically 16000 or 44100)
+        state: client state dictionary for temporal tracking
+    
+    Returns:
+        risk_score: int (0-100)
+        anomalies: list of detected issues
+    """
+    risk_score = 0
+    anomalies = []
+    
+    try:
+        # Ensure audio is mono
+        if len(audio_data.shape) > 1:
+            audio_data = np.mean(audio_data, axis=1)
+        
+        # 1. Spectral Centroid Analysis
+        # AI voices often have unnatural spectral distribution
+        spectral_centroids = librosa.feature.spectral_centroid(y=audio_data, sr=sample_rate)[0]
+        avg_centroid = np.mean(spectral_centroids)
+        centroid_variance = np.var(spectral_centroids)
+        
+        # Store history for temporal analysis
+        if "audio_centroid_history" not in state:
+            state["audio_centroid_history"] = []
+        
+        state["audio_centroid_history"].append(avg_centroid)
+        state["audio_centroid_history"] = state["audio_centroid_history"][-30:]  # Keep last 30 samples
+        
+        # AI voices have unusually consistent spectral centroids
+        if len(state["audio_centroid_history"]) > 10:
+            temporal_variance = np.var(state["audio_centroid_history"])
+            if temporal_variance < 100000:  # Very low variance
+                risk_score += 35
+                anomalies.append(f"Unnatural Voice Consistency (Spectral Var: {temporal_variance:.0f})")
+                print(f"[DeepGuard] ⚠️ AI Voice Detected - Low Spectral Variance: {temporal_variance:.0f}")
+        
+        # 2. Zero-Crossing Rate (ZCR)
+        # Measures how often the signal changes sign
+        # AI voices are often too smooth (low ZCR variance)
+        zcr = librosa.feature.zero_crossing_rate(audio_data)[0]
+        zcr_variance = np.var(zcr)
+        
+        if zcr_variance < 0.0001:  # Unnaturally smooth
+            risk_score += 25
+            anomalies.append(f"Synthetic Audio Pattern (ZCR Var: {zcr_variance:.6f})")
+            print(f"[DeepGuard] ⚠️ Synthetic Audio - Low ZCR Variance: {zcr_variance:.6f}")
+        
+        # 3. Pitch Variance Analysis
+        # Real human voices have natural pitch fluctuations
+        pitches, magnitudes = librosa.piptrack(y=audio_data, sr=sample_rate)
+        pitch_values = []
+        for t in range(pitches.shape[1]):
+            index = magnitudes[:, t].argmax()
+            pitch = pitches[index, t]
+            if pitch > 0:
+                pitch_values.append(pitch)
+        
+        if len(pitch_values) > 5:
+            pitch_variance = np.var(pitch_values)
+            
+            # AI voices often have too consistent pitch
+            if pitch_variance < 50:
+                risk_score += 20
+                anomalies.append(f"Robotic Pitch Pattern (Var: {pitch_variance:.1f})")
+                print(f"[DeepGuard] ⚠️ Robotic Voice - Low Pitch Variance: {pitch_variance:.1f}")
+        
+        # 4. Spectral Rolloff
+        # Point where 85% of spectral energy is below this frequency
+        # AI voices often have unnatural high-frequency cutoffs
+        rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sample_rate)[0]
+        avg_rolloff = np.mean(rolloff)
+        
+        # Suspiciously sharp cutoffs (common in AI voices)
+        if avg_rolloff > 7000 or avg_rolloff < 2000:
+            risk_score += 15
+            anomalies.append(f"Unnatural Frequency Range (Rolloff: {avg_rolloff:.0f} Hz)")
+        
+        print(f"[DeepGuard] Audio Analysis - Centroid: {avg_centroid:.0f}, ZCR Var: {zcr_variance:.6f}, Pitch Var: {pitch_variance if len(pitch_values) > 5 else 0:.1f}")
+        
+    except Exception as e:
+        print(f"[DeepGuard] Audio analysis error: {e}")
+        return 0, []
+    
+    return min(risk_score, 100), anomalies
 
 def analyze_liveness(frame, state):
     current_time = time.time()
@@ -294,21 +387,54 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             payload = json.loads(data)
             
+            video_risk = 0
+            audio_risk = 0
+            all_anomalies = []
+            debug_info = {}
+            
+            # Process video frame
             if "payload" in payload:
                 image = decode_image(payload["payload"])
                 
                 if image is not None:
-                    risk, reasons, debug_info = analyze_liveness(image, client_states[client_id])
+                    video_risk, video_anomalies, debug_info = analyze_liveness(image, client_states[client_id])
+                    all_anomalies.extend(video_anomalies)
+            
+            # Process audio chunk (if present)
+            if "audio_payload" in payload:
+                try:
+                    # Decode base64 audio data
+                    audio_b64 = payload["audio_payload"]
+                    if "," in audio_b64:
+                        audio_b64 = audio_b64.split(",")[1]
                     
-                    response = {
-                        "status": "processed",
-                        "risk_score": int(risk),
-                        "anomalies": reasons,
-                        "debug_info": debug_info,
-                        "timestamp": time.time()
-                    }
+                    audio_bytes = base64.b64decode(audio_b64)
                     
-                    await websocket.send_json(response)
+                    # Convert to numpy array (assuming 16-bit PCM, mono, 16kHz)
+                    audio_data = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+                    sample_rate = payload.get("sample_rate", 16000)
+                    
+                    # Analyze audio
+                    audio_risk, audio_anomalies = analyze_audio_liveness(audio_data, sample_rate, client_states[client_id])
+                    all_anomalies.extend(audio_anomalies)
+                    
+                except Exception as e:
+                    print(f"[DeepGuard] Audio processing error: {e}")
+            
+            # Combined risk score (weighted average: 60% video, 40% audio)
+            combined_risk = int(video_risk * 0.6 + audio_risk * 0.4)
+            
+            response = {
+                "status": "processed",
+                "risk_score": combined_risk,
+                "video_risk": int(video_risk),
+                "audio_risk": int(audio_risk),
+                "anomalies": all_anomalies,
+                "debug_info": debug_info,
+                "timestamp": time.time()
+            }
+            
+            await websocket.send_json(response)
                 
     except WebSocketDisconnect:
         print(f"[DeepGuard] Client #{client_id} disconnected")
