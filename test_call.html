@@ -53,6 +53,28 @@
         <div id="live-risk-display" style="font-size: 24px; font-weight: bold; color: #555;">Waiting for video stream...
         </div>
         <p id="risk-details" style="color: #666;"></p>
+
+        <!-- New Head Pose Dashboard -->
+        <div style="background: #f0f0f5; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: left;">
+            <h4 style="margin-top: 0;">👤 Head Pose Diagnostics</h4>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span>Pitch (Up/Down): <b id="val-pitch">0°</b></span>
+                <span>Yaw (L/R): <b id="val-yaw">0°</b></span>
+                <span>Roll (Tilt): <b id="val-roll">0°</b></span>
+            </div>
+
+            <p style="margin-bottom: 5px; font-size: 14px;">Movement Variance (5s): <b id="val-var">0.00</b></p>
+            <div style="width: 100%; background: #ddd; height: 10px; border-radius: 5px; overflow: hidden;">
+                <div id="var-bar"
+                    style="width: 0%; height: 100%; background: linear-gradient(90deg, red, yellow, green); transition: width 0.5s;">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #888;">
+                <span>Statue (<0.2)< /span>
+                        <span>Human (>0.5)</span>
+            </div>
+        </div>
     </div>
 
     <div class="box">

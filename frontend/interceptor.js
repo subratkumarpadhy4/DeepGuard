@@ -5,17 +5,28 @@
 
 console.log("[DeepGuard] Interceptor Loaded. Connecting to Analysis Engine...");
 
-let socket = null;
-const BACKEND_URL = "ws://localhost:8000/ws/analyze";
+// Global socket shared across all script injections
+if (!window.deepGuardSocket) {
+    window.deepGuardSocket = null;
+}
+
+if (typeof socket === 'undefined') {
+    var socket = null;
+}
+if (typeof BACKEND_URL === 'undefined') {
+    var BACKEND_URL = "ws://localhost:8000/ws/analyze";
+}
 
 function connectToBackend() {
-    socket = new WebSocket(BACKEND_URL);
+    const ws = new WebSocket(BACKEND_URL);
+    socket = ws;
+    window.deepGuardSocket = ws;
 
-    socket.onopen = () => {
+    ws.onopen = () => {
         console.log("[DeepGuard] WebSocket Connected! Secure Pipeline Established.");
     };
 
-    socket.onmessage = (event) => {
+    ws.onmessage = (event) => {
         const report = JSON.parse(event.data);
         const display = document.getElementById('live-risk-display');
         const details = document.getElementById('risk-details');
@@ -41,16 +52,48 @@ function connectToBackend() {
             // Auto-hide the warn overlay if it was shown
             hideOverlay();
         }
+
+        // --- NEW: Update Dashboard (Only if elements exist) ---
+        if (report.debug_info && document.getElementById('val-pitch')) {
+            const pitch = report.debug_info.pitch || 0;
+            const yaw = report.debug_info.yaw || 0;
+            const roll = report.debug_info.roll || 0;
+            const variance = report.debug_info.variance || 0;
+
+            document.getElementById('val-pitch').innerText = pitch.toFixed(1) + "°";
+            document.getElementById('val-yaw').innerText = yaw.toFixed(1) + "°";
+            document.getElementById('val-roll').innerText = roll.toFixed(1) + "°";
+
+            document.getElementById('val-var').innerText = variance.toFixed(3);
+
+            // Visual Bar Logic
+            // Updated thresholds: 0.15 (Statue), 0.3 (Suspicious), >0.3 (Human)
+            let width = (variance / 0.5) * 100;  // Scale to 0.5 max for better visualization
+            if (width > 100) width = 100;
+
+            const bar = document.getElementById('var-bar');
+            if (bar) {
+                bar.style.width = width + "%";
+
+                if (variance < 0.15) {
+                    bar.style.background = "red"; // Danger (Statue/Deepfake)
+                } else if (variance < 0.3) {
+                    bar.style.background = "orange"; // Suspicious (Low movement)
+                } else {
+                    bar.style.background = "#32CD32"; // Green (Natural human)
+                }
+            }
+        }
     };
 
-    socket.onclose = () => {
+    ws.onclose = () => {
         console.log("[DeepGuard] WebSocket Disconnected. Reconnecting in 3s...");
         const display = document.getElementById('live-risk-display');
         if (display) display.innerText = "🔌 Connecting to Brain...";
         setTimeout(connectToBackend, 3000);
     };
 
-    socket.onerror = (error) => {
+    ws.onerror = (error) => {
         console.error("[DeepGuard] WebSocket Error:", error);
     };
 }
@@ -61,8 +104,10 @@ connectToBackend();
 
 // --- UI Overlay Logic ---
 
-let overlayContainer = null;
-let overlayTimeout = null;
+if (typeof overlayContainer === 'undefined') {
+    var overlayContainer = null;
+    var overlayTimeout = null;
+}
 
 createOverlayUI();
 
@@ -171,24 +216,28 @@ function alertUserOfRisk(report) {
 }
 
 
-// 1. Store the original browser function
-const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+// 1. Store the original browser function (IDEMPOTENT CHECK)
+if (!navigator.mediaDevices._deepGuardOriginal) {
+    navigator.mediaDevices._deepGuardOriginal = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
-// 2. Overwrite the function with our proxy
-navigator.mediaDevices.getUserMedia = async (constraints) => {
-    console.log("[DeepGuard] Call detected! Intercepting media stream...");
+    // 2. Overwrite the function with our proxy
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+        console.log("[DeepGuard] Call detected! Intercepting media stream...");
 
-    // Get the actual camera/mic stream requested by the calling app (e.g., Google Meet)
-    const mediaStream = await originalGetUserMedia(constraints);
+        // Get the actual camera/mic stream requested by the calling app (e.g., Google Meet)
+        const mediaStream = await navigator.mediaDevices._deepGuardOriginal(constraints);
 
-    // 3. "Tee" the stream: Split it into two paths
-    // Path A: Goes back to the calling app (so the user can still talk)
-    // Path B: Goes to our Analysis Engine
-    processStreamForAnalysis(mediaStream);
+        // 3. "Tee" the stream: Split it into two paths
+        // Path A: Goes back to the calling app (so the user can still talk)
+        // Path B: Goes to our Analysis Engine
+        processStreamForAnalysis(mediaStream);
 
-    // Return Path A to the app seamlessly
-    return mediaStream;
-};
+        // Return Path A to the app seamlessly
+        return mediaStream;
+    };
+} else {
+    console.log("[DeepGuard] Analyzer already hooked. Skipping re-initialization.");
+}
 
 function processStreamForAnalysis(stream) {
     const videoTrack = stream.getVideoTracks()[0];
@@ -208,7 +257,8 @@ function processStreamForAnalysis(stream) {
 
         // Processing Loop
         setInterval(() => {
-            if (videoTrack.readyState === 'live' && socket && socket.readyState === WebSocket.OPEN) {
+            const activeSocket = window.deepGuardSocket || socket;
+            if (videoTrack.readyState === 'live' && activeSocket && activeSocket.readyState === WebSocket.OPEN) {
                 try {
                     // Set canvas size to video size (or downscale for performance)
                     if (hiddenVideo.videoWidth > 0) {
@@ -237,9 +287,10 @@ function processStreamForAnalysis(stream) {
 }
 
 function sendFrameToBackend(frameData) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    const activeSocket = window.deepGuardSocket || socket;
+    if (activeSocket && activeSocket.readyState === WebSocket.OPEN) {
         // Send simply textual data for the mock server to process
-        socket.send(JSON.stringify({
+        activeSocket.send(JSON.stringify({
             type: "video_frame",
             payload: frameData
         }));
