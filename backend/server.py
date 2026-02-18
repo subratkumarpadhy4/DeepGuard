@@ -176,83 +176,169 @@ def analyze_audio_liveness(audio_data, sample_rate, state):
     
     return min(risk_score, 100), anomalies
 
-def analyze_liveness(frame, state):
-    current_time = time.time()
+def analyze_liveness(frame, state, override_timestamp=None):
+    current_time = override_timestamp if override_timestamp is not None else time.time()
     risk_score = 0
     anomalies = []
     
     # Get frame dimensions
     h, w, _ = frame.shape
     
-    # --- STEP 1: Fast Face Detection (Haar Cascade Pre-filter) ---
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    # --- STEP 1: MediaPipe Detailed Analysis (Primary) ---
+    # We removed the weak Haar Cascade pre-filter which was missing faces.
     
-    # No face detected by Haar Cascade -> Skip expensive MediaPipe processing
-    if len(faces) == 0:
-        print("[DeepGuard] No face detected by Haar Cascade - skipping analysis")
-        debug_info = {
-            "pitch": 0.0,
-            "yaw": 0.0,
-            "roll": 0.0,
-            "variance": 0.0
-        }
-        return 0, ["No face detected"], debug_info
-    
-    print(f"[DeepGuard] Face detected: {len(faces)} face(s) found")
-    
-    # --- STEP 2: Pixel Variance Liveness Check ---
-    # Extract the largest face region
-    (x, y, fw, fh) = max(faces, key=lambda f: f[2] * f[3])  # Largest face by area
-    face_region = gray[y:y+fh, x:x+fw]
-    
-    # Calculate pixel variance in the face region
-    pixel_variance = np.var(face_region)
-    
-    # Store variance history for temporal analysis
-    if "pixel_variance_history" not in state:
-        state["pixel_variance_history"] = []
-    
-    state["pixel_variance_history"].append((current_time, pixel_variance))
-    state["pixel_variance_history"] = [p for p in state["pixel_variance_history"] if current_time - p[0] < 3.0]
-    
-    # Check if variance is too low (static image indicator)
-    if len(state["pixel_variance_history"]) > 10:
-        avg_pixel_var = np.mean([p[1] for p in state["pixel_variance_history"]])
-        
-        print(f"[DeepGuard] Pixel Variance: {avg_pixel_var:.2f} (Current: {pixel_variance:.2f})")
-        
-        # Very low variance = likely a static image or low-quality deepfake
-        if avg_pixel_var < 5.0:
-            risk_score += 40
-            anomalies.append(f"Static Image Detected (Pixel Var: {avg_pixel_var:.1f})")
-            print(f"[DeepGuard] ⚠️ STATIC IMAGE DETECTED! Avg Variance: {avg_pixel_var:.2f}")
-        elif avg_pixel_var < 15.0:
-            risk_score += 15
-            anomalies.append("Low Pixel Variance (Suspicious)")
-            print(f"[DeepGuard] ⚠️ Low Pixel Variance (Suspicious): {avg_pixel_var:.2f}")
-    
-    # --- STEP 3: MediaPipe Detailed Analysis ---
     # Preprocessing for landmarks
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
     results = face_mesh.process(frame_rgb)
     
     if not results.multi_face_landmarks:
+        # Fallback/Return if no face found by MediaPipe
         state["face_lost_time"] = current_time
-        return 0, [] # No face found
+        return 0, ["No face detected"], {}
 
     # Get landmarks
     landmarks = results.multi_face_landmarks[0].landmark
+    
+    # Get frame dimensions for later use
+    h, w, _ = frame.shape
+    
+    print(f"[DeepGuard] Face detected by MediaPipe.")
+    
+    # --- STEP 2: Pixel Variance Liveness Check (Optional but kept for static images) ---
+    # We can still do pixel variance on a cropped region if needed, 
+    # but let's derive the bounding box from MediaPipe landmarks now for accuracy.
+    
+    # Estimate bounding box from landmarks
+    x_min = min([lm.x for lm in landmarks]) * w
+    x_max = max([lm.x for lm in landmarks]) * w
+    y_min = min([lm.y for lm in landmarks]) * h
+    y_max = max([lm.y for lm in landmarks]) * h
+    
+    # Clamp to frame
+    x_min, x_max = max(0, int(x_min)), min(w, int(x_max))
+    y_min, y_max = max(0, int(y_min)), min(h, int(y_max))
+    
+    try:
+        if x_max > x_min and y_max > y_min:
+            face_region = cv2.cvtColor(frame[y_min:y_max, x_min:x_max], cv2.COLOR_BGR2GRAY)
+            pixel_variance = np.var(face_region)
+            
+             # Store variance history for temporal analysis
+            if "pixel_variance_history" not in state:
+                state["pixel_variance_history"] = []
+            
+            state["pixel_variance_history"].append((current_time, pixel_variance))
+            state["pixel_variance_history"] = [p for p in state["pixel_variance_history"] if current_time - p[0] < 3.0]
+            
+            # Check if variance is too low (static image indicator)
+            if len(state["pixel_variance_history"]) > 10:
+                avg_pixel_var = np.mean([p[1] for p in state["pixel_variance_history"]])
+                
+                # Very low variance = likely a static image or low-quality deepfake
+                if avg_pixel_var < 5.0:
+                    risk_score += 40
+                    anomalies.append(f"Static Image Detected (Pixel Var: {avg_pixel_var:.1f})")
+                elif avg_pixel_var < 15.0:
+                    risk_score += 15
+                    anomalies.append("Low Pixel Variance (Suspicious)")
+                    
+    except Exception as e:
+        print(f"[DeepGuard] Variance check failed: {e}")
+        
+    # --- STEP 3: Continue with EAR and Pose ---
     
     # Calculate EAR for both eyes
     left_ear = calculate_ear(landmarks, w, h, LEFT_EYE)
     right_ear = calculate_ear(landmarks, w, h, RIGHT_EYE)
     avg_ear = (left_ear + right_ear) / 2.0
     
+    # --- CHECK 4: Mouth Aspect Ratio (MAR) & Lip Sync Proxy ---
+    # Inner lip landmarks: 
+    # Top: 82, 13, 312, 14, 317 (mid: 13)
+    # Bottom: 87, 14, 317, 178, 302 (mid: 14) - approximations
+    # Better set: Upper [13], Lower [14], Left [78], Right [308]
+    p_upper = landmarks[13]
+    p_lower = landmarks[14]
+    p_left = landmarks[78]
+    p_right = landmarks[308]
+    
+    vertical_mouth = np.linalg.norm(np.array([p_upper.x*w, p_upper.y*h]) - np.array([p_lower.x*w, p_lower.y*h]))
+    horizontal_mouth = np.linalg.norm(np.array([p_left.x*w, p_left.y*h]) - np.array([p_right.x*w, p_right.y*h]))
+    
+    mar = vertical_mouth / horizontal_mouth if horizontal_mouth > 0 else 0
+    
+    # Track MAR history
+    if "mar_history" not in state: state["mar_history"] = []
+    state["mar_history"].append(mar)
+    state["mar_history"] = state["mar_history"][-300:] # Keep last 10 seconds (assuming 30fps)
+    
+    # Check for "Muted" talking (Lips moving but no audio - requires audio sync, handled in aggregation)
+    # Here check for "Frozen Mouth" (Robot)
+    if len(state["mar_history"]) > 30:
+        mar_variance = np.var(state["mar_history"])
+        if mar_variance < 0.0005: # Extremely still mouth
+             # Only flag if we consider strictly "talking" videos? 
+             # For now, just a subtle warning or combine with audio energy later.
+             pass 
+
+    # --- CHECK 5: Gaze & Pupil Tracking ("Soulless Eyes") ---
+    # Iris landmarks: Left [468-472], Right [473-477]
+    # We track the center of the iris relative to the eye corners to detect movement.
+    try:
+        left_iris = landmarks[468]
+        right_iris = landmarks[473]
+        
+        # Simple Gaze Variance Check
+        if "iris_history" not in state: state["iris_history"] = []
+        state["iris_history"].append((left_iris.x, left_iris.y, right_iris.x, right_iris.y))
+        state["iris_history"] = state["iris_history"][-60:] # 2 seconds
+        
+        if len(state["iris_history"]) > 10:
+            # Calculate movement variance of irises
+            iris_data = np.array(state["iris_history"])
+            iris_var = np.var(iris_data, axis=0) # [lx_var, ly_var, rx_var, ry_var]
+            avg_iris_var = np.mean(iris_var) * 100000 # Scale up
+            
+            # "Dead Eyes" check: Real eyes constantly saccade (micro-movements)
+            if avg_iris_var < 0.2: 
+                risk_score += 25
+                anomalies.append(f"Soulless Eyes (No saccadic movement: {avg_iris_var:.2f})")
+    except IndexError:
+        pass # Old MediaPipe model might not have iris landmarks
+        
+    # --- CHECK 6: Skin Texture Analysis (Plastic/Blurry Skin) ---
+    # Crop a cheek region and check for high-frequency noise (pores, skin texture)
+    # Cheek approx: Left cheek around landmark 234 or 50? Let's use 234 (ear) -> 205 (cheek)
+    try:
+        cheek_lm = landmarks[205] # Left cheek
+        cx, cy = int(cheek_lm.x * w), int(cheek_lm.y * h)
+        patch_size = int(w * 0.08) # 8% of width
+        
+        y1, y2 = max(0, cy-patch_size), min(h, cy+patch_size)
+        x1, x2 = max(0, cx-patch_size), min(w, cx+patch_size)
+        
+        if y2>y1 and x2>x1:
+            cheek_roi = gray[y1:y2, x1:x2]
+            # Laplacain variance measures "blurriness" or lack of texture
+            texture_score = cv2.Laplacian(cheek_roi, cv2.CV_64F).var()
+            
+            if "texture_history" not in state: state["texture_history"] = []
+            state["texture_history"].append(texture_score)
+            state["texture_history"] = state["texture_history"][-30:]
+            
+            avg_texture = np.mean(state["texture_history"])
+            
+            # Typical sharp skin > 100-200. "Airbrushed" AI skin < 80.
+            if avg_texture < 80.0:
+                risk_score += 30
+                anomalies.append(f"Unnatural Skin Smoothness (Texture Score: {avg_texture:.1f})")
+    except Exception:
+        pass
+    
     # Blink Threshold (Typical Human EAR threshold is ~0.2 - 0.25)
     # Increased to 0.22 to be more sensitive to partial blinks
-    BLINK_THRESHOLD = 0.22
+    BLINK_THRESHOLD = 0.24 # More sensitive
     
     # State Machine for Blinking
     if avg_ear < BLINK_THRESHOLD:
@@ -268,12 +354,12 @@ def analyze_liveness(frame, state):
     time_since_last_blink = current_time - state.get("last_blink", current_time)
     
     # Rule 1: Abnormal Stare (Deepfake symptom)
-    # Humans can focus for 15-20 seconds, so increased threshold to 20s
-    if time_since_last_blink > 20.0:
+    # Re-tuned for shorter videos
+    if time_since_last_blink > 8.0: # Was 20s. 8s is suspicious in a talking head video.
         risk_score += 70
         anomalies.append(f"Abnormal Stare (No blink for {int(time_since_last_blink)}s)")
-    elif time_since_last_blink > 15.0:
-        risk_score += 25
+    elif time_since_last_blink > 4.0:
+        risk_score += 15
         anomalies.append("Low Blink Rate")
 
     # Rule 2: Head Rotation Analysis (Statue Check)
@@ -285,23 +371,33 @@ def analyze_liveness(frame, state):
     # Keep only last 5 seconds of data
     state["pose_history"] = [p for p in state["pose_history"] if current_time - p[0] < 5.0]
     
-    if len(state["pose_history"]) > 50:  # Need ~5 seconds of data for reliable variance
+    if len(state["pose_history"]) > 15: # Need fewer frames to start judging (was 50)
         # Calculate standard deviation (variance) of movement
         poses = np.array([p[1:] for p in state["pose_history"]])  # [[p, y, r], ...]
         std_dev = np.std(poses, axis=0)  # [std_pitch, std_yaw, std_roll]
         
         # Thresholds: Humans naturally move slightly (micro-movements)
         # Even when focused, humans have subtle movements from breathing, balance
-        # Only truly static images/deepfakes have variance < 0.15°
+        # Only truly static images/deepfakes have variance < 0.25°
         
         avg_movement = np.mean(std_dev[:2])  # Check Pitch & Yaw mainly
         
-        if avg_movement < 0.15:  # Extremely still - likely deepfake/image
+        if avg_movement < 0.25:  # Extremely still (was 0.15)
             risk_score += 50
             anomalies.append(f"Unnatural Stillness (Statue-like: {avg_movement:.2f}° var)")
-        elif avg_movement < 0.3:  # Very still - suspicious but could be focused human
+        elif avg_movement < 0.5:  # Very still (was 0.3)
             risk_score += 15
             anomalies.append("Low Head Movement")
+            
+        # --- CHECK 7: Jerky Motion / Glitch Detection ---
+        # Calculate velocity (diff) and acceleration (diff of diff)
+        velocities = np.diff(poses, axis=0) # [d_pitch, d_yaw, d_roll]
+        if len(velocities) > 0:
+             max_jerk = np.max(np.abs(velocities))
+             # Humans rarely snap head faster than 15 degrees per frame interval (assuming 30fps)
+             if max_jerk > 15.0:
+                 risk_score += 40
+                 anomalies.append(f"Robotic/Jerky Motion (Max Jerk: {max_jerk:.1f}°)")
 
     # Prepare debug info
     debug_info = {
@@ -464,8 +560,8 @@ async def analyze_video_upload(file: UploadFile = File(...)):
         video_risk_accum = 0
         video_anomalies = []
         
-        # Analyze every 10th frame to speed up processing
-        FRAME_SKIP = 10 
+        # Analyze every 5th frame for more granularity (was 10)
+        FRAME_SKIP = 5 
         
         # Create a temporary state for this analysis
         analysis_state = {
@@ -475,6 +571,8 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             "pose_history": [],
             "pixel_variance_history": []
         }
+        
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0 # Default to 30 if unknown
         
         frames_processed = 0
         
@@ -486,18 +584,47 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             frame_count += 1
             if frame_count % FRAME_SKIP != 0:
                 continue
-                
-            risk, anomalies, _ = analyze_liveness(frame, analysis_state)
+            
+            # Correctly simulate time passage for the analysis state based on video FPS
+            current_video_time = frame_count / fps
+            
+            # We need to monkey-patch or pass this time to analyze_liveness
+            # checks in analyze_liveness use time.time(), so we'll update the state's reference time
+            # For the purpose of this script, we'll manually update the state's reference "last_blink" 
+            # to be relative to this video timeline.
+             
+            # Actually, standard analyze_liveness uses time.time() which is WALL CLOCK time.
+            # This is wrong for video files. We need to pass the timestamp.
+            # Let's modify analyze_liveness signature or wrapper.
+            
+            # WRAPPER: Update state with current video time instead of relying on wall clock in the function
+            # Since we can't easily change the signature without breaking websocket, 
+            # we will set a global override or just pass it in state for a modified version.
+            
+            # QUICK FIX: Update the 'current_time' in the state if we modify the function to use it.
+            # But since analyze_liveness calls time.time() internally, we must modify THAT function.
+            # See previous edit.
+            
+            risk, anomalies, _ = analyze_liveness(frame, analysis_state, override_timestamp=current_video_time)
+            
+            # Accumulate risk more aggressively
             if risk > 0:
                 video_risk_accum += risk
-                video_anomalies.extend(anomalies)
             
+            # Key fix: Always collect anomalies, even if risk score is low
+            if anomalies:
+                 video_anomalies.extend(anomalies)
+
             frames_processed += 1
             
         cap.release()
         
         # Calculate average video risk
+        # Fix: Ensure a minimum baseline risk if anomalies were found
         avg_video_risk = video_risk_accum / frames_processed if frames_processed > 0 else 0
+        
+        if len(video_anomalies) > 0 and avg_video_risk < 10:
+             avg_video_risk = 15 # Bump score if we saw issues but they averaged out
         
         # --- AUDIO ANALYSIS ---
         audio_risk = 0
