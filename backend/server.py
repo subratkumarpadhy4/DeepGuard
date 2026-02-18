@@ -6,8 +6,11 @@ import time
 import mediapipe as mp
 import librosa
 import scipy.signal
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import shutil
+import os
+import tempfile
 
 app = FastAPI()
 
@@ -442,6 +445,122 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Error: {e}")
 
+@app.post("/analyze/video")
+async def analyze_video_upload(file: UploadFile = File(...)):
+    """
+    Endpoint to upload a video file and analyze it for deepfake signatures.
+    """
+    print(f"[DeepGuard] Received video upload: {file.filename}")
+    
+    # Create a temporary file to save the uploaded video
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+        shutil.copyfileobj(file.file, temp_video)
+        temp_video_path = temp_video.name
+    
+    try:
+        # --- VIDEO ANALYSIS ---
+        cap = cv2.VideoCapture(temp_video_path)
+        frame_count = 0
+        video_risk_accum = 0
+        video_anomalies = []
+        
+        # Analyze every 10th frame to speed up processing
+        FRAME_SKIP = 10 
+        
+        # Create a temporary state for this analysis
+        analysis_state = {
+            "last_blink": time.time(),
+            "blink_count": 0,
+            "eyes_closed": False,
+            "pose_history": [],
+            "pixel_variance_history": []
+        }
+        
+        frames_processed = 0
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            frame_count += 1
+            if frame_count % FRAME_SKIP != 0:
+                continue
+                
+            risk, anomalies, _ = analyze_liveness(frame, analysis_state)
+            if risk > 0:
+                video_risk_accum += risk
+                video_anomalies.extend(anomalies)
+            
+            frames_processed += 1
+            
+        cap.release()
+        
+        # Calculate average video risk
+        avg_video_risk = video_risk_accum / frames_processed if frames_processed > 0 else 0
+        
+        # --- AUDIO ANALYSIS ---
+        audio_risk = 0
+        audio_anomalies = []
+        
+        try:
+            # Load audio using librosa (it handles video files directly usually)
+            # We use a short duration if the video is long to save time, e.g., first 30 seconds
+            y, sr = librosa.load(temp_video_path, sr=None, duration=30)
+            
+            if len(y) > 0:
+                # Use existing audio analysis logic
+                # We need to mock a state for audio if needed, but the function uses a simple dict
+                audio_state = {} 
+                audio_risk, audio_anomalies = analyze_audio_liveness(y, sr, audio_state)
+            else:
+                print("[DeepGuard] No audio track found in video.")
+                
+        except Exception as e:
+            print(f"[DeepGuard] Audio extraction failed (might be silent video): {e}")
+        
+        # --- AGGREGATE RESULTS ---
+        # Deduplicate anomalies
+        unique_anomalies = list(set(video_anomalies + audio_anomalies))
+        
+        # Weighted Risk: 60% Video, 40% Audio (if audio exists)
+        if audio_risk > 0:
+            final_risk = (avg_video_risk * 0.6) + (audio_risk * 0.4)
+        else:
+            final_risk = avg_video_risk
+            
+        # Cap at 99 to allow 100 only for absolute certainty
+        final_risk = min(int(final_risk), 99)
+        
+        status = "SAFE"
+        if final_risk > 75:
+            status = "CRITICAL DEEPFAKE"
+        elif final_risk > 40:
+            status = "SUSPICIOUS"
+            
+        return {
+            "filename": file.filename,
+            "risk_score": final_risk,
+            "status": status,
+            "anomalies": unique_anomalies,
+            "details": {
+                "video_risk": int(avg_video_risk),
+                "audio_risk": int(audio_risk),
+                "frames_analyzed": frames_processed
+            }
+        }
+
+    except Exception as e:
+        print(f"[DeepGuard] Analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    finally:
+        # Cleanup temporary file
+        if os.path.exists(temp_video_path):
+            os.remove(temp_video_path)
+            print(f"[DeepGuard] Cleaned up temp file: {temp_video_path}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

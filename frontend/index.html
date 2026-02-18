@@ -2,85 +2,262 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DeepGuard AI</title>
     <style>
+        :root {
+            --bg: #020617;
+            --card-bg: rgba(15, 23, 42, 0.96);
+            --card-border: rgba(148, 163, 184, 0.35);
+            --accent: #22c55e;
+            --accent-soft: rgba(34, 197, 94, 0.16);
+            --danger: #f97373;
+            --text-main: #e5e7eb;
+            --text-soft: #9ca3af;
+            --text-muted: #6b7280;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background-color: #1c1c1e;
-            color: white;
-            width: 350px;
-            padding: 20px;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(34, 197, 94, 0.18), transparent 55%),
+                radial-gradient(circle at bottom, rgba(59, 130, 246, 0.18), transparent 55%),
+                var(--bg);
+            color: var(--text-main);
+            width: 360px;
             margin: 0;
+            padding: 14px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: 100%;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(148, 163, 184, 0.35), transparent);
+            padding: 1px;
+        }
+
+        .container {
+            border-radius: 18px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 14px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
 
         .header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .logo-wrap {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .logo-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 30% 0%, #4ade80, #16a34a 40%, #111827 75%);
+            box-shadow:
+                0 0 0 1px rgba(34, 197, 94, 0.5),
+                0 8px 18px rgba(22, 163, 74, 0.5);
+            font-size: 18px;
+        }
+
+        .logo-text-block {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
         .logo {
             font-weight: 700;
-            font-size: 1.2rem;
-            display: flex;
+            font-size: 1.05rem;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+        }
+
+        .logo-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            color: var(--accent);
+            background: rgba(22, 163, 74, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
         }
 
         .status-card {
-            background: linear-gradient(135deg, #34c759 0%, #30b350 100%);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(52, 199, 89, 0.3);
+            position: relative;
+            border-radius: 14px;
+            padding: 14px 12px 12px;
+            background:
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.35), transparent 60%),
+                radial-gradient(circle at 100% 0%, rgba(34, 197, 94, 0.4), transparent 60%),
+                linear-gradient(135deg, #0f172a, #0b1220);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 2.1fr 1.4fr;
+            gap: 8px;
         }
 
-        .status-card.danger {
-            background: linear-gradient(135deg, #ff3b30 0%, #d7332b 100%);
-            box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
+        .status-main {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .status-title {
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-            opacity: 0.9;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
         }
 
         .status-value {
-            font-size: 1.8rem;
+            font-size: 1.35rem;
             font-weight: 800;
-            margin: 10px 0;
+            letter-spacing: 0.16em;
+        }
+
+        .status-desc {
+            font-size: 0.72rem;
+            color: var(--text-soft);
+        }
+
+        .status-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .status-chip {
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            background: rgba(15, 23, 42, 0.85);
+            color: var(--text-soft);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+        }
+
+        .status-gauge {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ring {
+            width: 70px;
+            height: 70px;
+            border-radius: 999px;
+            background:
+                conic-gradient(from 200deg, var(--accent) 0 280deg, rgba(31, 41, 55, 0.9) 280deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 24px rgba(22, 163, 74, 0.55);
+        }
+
+        .ring-inner {
+            width: 50px;
+            height: 50px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 0%, #22c55e, #15803d 50%, #020617 95%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #e5e7eb;
+        }
+
+        .ring-score {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .ring-label {
+            font-size: 0.6rem;
+            opacity: 0.9;
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--text-muted);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .toggle-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #2c2c2e;
-            padding: 15px;
+            gap: 10px;
+            padding: 9px 10px;
             border-radius: 10px;
-            margin-bottom: 15px;
+            background: radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.18), transparent 60%),
+                rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(51, 65, 85, 0.9);
+        }
+
+        .toggle-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
         .label {
-            font-size: 0.9rem;
-            color: #d1d1d6;
+            font-size: 0.82rem;
+            color: var(--text-main);
         }
 
-        /* Toggle Switch */
+        .label-sub {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
         .switch {
             position: relative;
             display: inline-block;
-            width: 50px;
-            height: 28px;
+            width: 46px;
+            height: 24px;
         }
 
         .switch input {
@@ -92,109 +269,187 @@
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #3a3a3c;
-            border-radius: 34px;
-            transition: .4s;
+            inset: 0;
+            background: linear-gradient(135deg, #020617, #020617);
+            border-radius: 999px;
+            border: 1px solid rgba(75, 85, 99, 0.9);
+            transition: 0.28s ease;
         }
 
-        .slider:before {
-            position: absolute;
+        .slider::before {
             content: "";
-            height: 22px;
-            width: 22px;
+            position: absolute;
+            height: 18px;
+            width: 18px;
             left: 3px;
-            bottom: 3px;
-            background-color: white;
-            border-radius: 50%;
-            transition: .4s;
+            top: 2px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 0%, #f9fafb, #e5e7eb 45%, #9ca3af 100%);
+            box-shadow:
+                0 2px 4px rgba(15, 23, 42, 0.8),
+                0 0 0 1px rgba(148, 163, 184, 0.7);
+            transition: 0.28s ease;
         }
 
-        input:checked+.slider {
-            background-color: #34c759;
+        input:checked + .slider {
+            background: radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.3), transparent 60%),
+                linear-gradient(135deg, #22c55e, #16a34a);
+            border-color: rgba(34, 197, 94, 0.85);
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
         }
 
-        input:checked+.slider:before {
-            transform: translateX(22px);
+        input:checked + .slider::before {
+            transform: translateX(20px);
+            box-shadow:
+                0 2px 6px rgba(22, 163, 74, 0.7),
+                0 0 0 1px rgba(190, 242, 100, 0.8);
         }
 
-        .stats {
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(55, 65, 81, 0.8);
+        }
+
+        .footer-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .footer-main {
+            font-size: 0.7rem;
+            color: var(--text-soft);
+        }
+
+        .footer-sub {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .footer-stats {
             display: flex;
             gap: 10px;
         }
 
-        .stat-box {
-            flex: 1;
-            background-color: #2c2c2e;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-num {
-            font-weight: 700;
-            font-size: 1.2rem;
+        .stat {
+            min-width: 60px;
+            text-align: right;
         }
 
         .stat-label {
-            font-size: 0.7rem;
-            color: #8e8e93;
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+        }
+
+        .stat-value {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-main);
         }
     </style>
 </head>
 
 <body>
+    <div class="shell">
+        <div class="container">
+            <div class="header">
+                <div class="logo-wrap">
+                    <div class="logo-badge">🛡️</div>
+                    <div class="logo-text-block">
+                        <div class="logo" id="logoLink">DeepGuard AI</div>
+                        <div class="logo-sub">Real‑time deepfake defense</div>
+                    </div>
+                </div>
+                <div class="pill">
+                    <span class="pill-dot"></span>
+                    <span>Live protection · v1.1</span>
+                </div>
+            </div>
 
-    <div class="header">
-        <div class="logo">🛡️ DeepGuard AI</div>
-        <div style="font-size: 0.8rem; color: #8e8e93;">v1.1</div>
-    </div>
+            <div class="status-card" id="statusCard">
+                <div class="status-main">
+                    <div class="status-title">System posture</div>
+                    <div class="status-value">SECURE</div>
+                    <div class="status-desc">All shields are active and scanning in real time.</div>
+                    <div class="status-meta">
+                        <span class="status-chip">Stream integrity: 99.7%</span>
+                        <span class="status-chip">Anomaly score: low</span>
+                    </div>
+                </div>
+                <div class="status-gauge">
+                    <div class="ring">
+                        <div class="ring-inner">
+                            <div class="ring-score">99</div>
+                            <div class="ring-label">Score</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Active Monitoring Status -->
-    <div class="status-card" id="statusCard">
-        <div class="status-title">System Status</div>
-        <div class="status-value">SECURE</div>
-        <div style="font-size: 0.8rem; opacity: 0.8;">Monitoring Active Streams</div>
-    </div>
+            <div>
+                <div class="section-label">Protection layers</div>
+                <div class="controls">
+                    <div class="toggle-row">
+                        <div class="toggle-text">
+                           <span class="label">Real‑time video scan</span>
+                           <span class="label-sub">Face spoofing, frame injection &amp; playback attacks.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
 
-    <div class="toggle-row">
-        <span class="label">Real-time Video Scan</span>
-        <label class="switch">
-            <input type="checkbox" checked>
-            <span class="slider"></span>
-        </label>
-    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-text">
+                            <span class="label">Audio fraud detection</span>
+                            <span class="label-sub">Voice cloning &amp; synthetic speech anomalies.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
 
-    <div class="toggle-row">
-        <span class="label">Audio Fraud Detection</span>
-        <label class="switch">
-            <input type="checkbox" checked>
-            <span class="slider"></span>
-        </label>
-    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-text">
+                            <span class="label">Head pose verification</span>
+                            <span class="label-sub">Liveness checks from micro‑motions and gaze.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
 
-    <div class="toggle-row">
-        <span class="label">Head Pose Verification</span>
-        <label class="switch">
-            <input type="checkbox" checked>
-            <span class="slider"></span>
-        </label>
-    </div>
-
-    <div class="stats">
-        <div class="stat-box">
-            <div class="stat-num">0</div>
-            <div class="stat-label">Risks Blocked</div>
+            <div class="footer">
+                <div class="footer-text">
+                    <span class="footer-main">Stream is being continuously analyzed.</span>
+                    <span class="footer-sub">Chrome extension is running locally; no raw media is stored.</span>
+                </div>
+                <div class="footer-stats">
+                    <div class="stat">
+                        <div class="stat-label">Threats</div>
+                        <div class="stat-value">0 blocked</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Latency</div>
+                        <div class="stat-value">12&nbsp;ms</div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="stat-box">
-            <div class="stat-num">12ms</div>
-            <div class="stat-label">Latency</div>
-        </div>
     </div>
 
+    <script src="popup.js"></script>
 </body>
 
 </html>
