@@ -172,11 +172,15 @@ def analyze_audio_liveness(audio_data, sample_rate, state):
 
 def analyze_liveness(frame, state, override_timestamp=None):
     current_time = override_timestamp if override_timestamp is not None else time.time()
-    risk_score = 0
-    anomalies = []
-    
     # Get frame dimensions
     h, w, _ = frame.shape
+    risk_score = 0
+    humanity_credit = 0
+    anomalies = []
+    avg_iris_var = 0 
+    
+    # Pre-convert to grayscale for all texture/feature checks
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     # --- STEP 1: MediaPipe Detailed Analysis (Primary) ---
     # We removed the weak Haar Cascade pre-filter which was missing faces.
@@ -322,10 +326,7 @@ def analyze_liveness(frame, state, override_timestamp=None):
         pass # Old MediaPipe model might not have iris landmarks
         
     # --- CHECK 6: Skin Texture Analysis (Plastic/Blurry Skin & GAN Noise) ---
-    # Crop a cheek region and check for high-frequency noise (pores, skin texture)
-    # and GAN-specific periodic patterns.
     try:
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         cheek_lm = landmarks[205] # Left cheek
         cx, cy = int(cheek_lm.x * w), int(cheek_lm.y * h)
         patch_size = int(w * 0.08) # 8% of width
@@ -426,8 +427,73 @@ def analyze_liveness(frame, state, override_timestamp=None):
                  risk_score += 40
                  anomalies.append(f"Robotic/Jerky Motion (Max Jerk: {max_jerk:.1f}°)")
 
+    # --- CHECK 8: rPPG (Remote Heartbeat Detection) ---
+    # Blood volume changes in the face create a rhythmic green-channel signal
+    # Forehead landmarks: 10, 151, 67, 297
+    pulse_val = 0
+    try:
+        # Define Forehead ROI
+        forehead_points = [10, 151, 67, 297]
+        roi_pts = []
+        for idx in forehead_points:
+            p = landmarks[idx]
+            roi_pts.append([p.x * w, p.y * h])
+        
+        roi_pts = np.array(roi_pts, dtype=np.int32)
+        x, y, rw, rh = cv2.boundingRect(roi_pts)
+        
+        # Guard against small/invalid ROI
+        if rw > 5 and rh > 5:
+            roi_img = frame[y:y+rh, x:x+rw]
+            # Extract Green Channel mean (highest BVP sensitivity)
+            pulse_val = np.mean(roi_img[:, :, 1])
+            
+            if "pulse_history" not in state: state["pulse_history"] = []
+            state["pulse_history"].append((current_time, pulse_val))
+            
+            # Keep 10 seconds of history
+            state["pulse_history"] = [p for p in state["pulse_history"] if current_time - p[0] < 10.0]
+            
+            # Periodically analyze heartbeat frequency
+            if len(state["pulse_history"]) > 90: # Need ~3 seconds minimum at 30fps
+                history_vals = np.array([p[1] for p in state["pulse_history"]])
+                # 1. Detrend signal
+                history_vals = scipy.signal.detrend(history_vals)
+                
+                # 2. Bandpass Filter (0.7 Hz to 3.0 Hz -> 42 - 180 BPM)
+                # We assume approx 30fps if time is not consistent
+                fs = len(history_vals) / (state["pulse_history"][-1][0] - state["pulse_history"][0][0])
+                try:
+                    nyq = 0.5 * fs
+                    low = 0.7 / nyq
+                    high = 3.0 / nyq
+                    b, a = scipy.signal.butter(3, [low, high], btype='band')
+                    filtered_signal = scipy.signal.filtfilt(b, a, history_vals)
+                    
+                    # 3. Frequency Analysis (FFT)
+                    n = len(filtered_signal)
+                    fft_vals = np.abs(np.fft.rfft(filtered_signal))
+                    freqs = np.fft.rfftfreq(n, 1/fs)
+                    
+                    # Find dominant peak in heart range
+                    peak_idx = np.argmax(fft_vals)
+                    dom_freq = freqs[peak_idx]
+                    signal_strength = fft_vals[peak_idx] / np.mean(fft_vals) # Simple SNR
+                    
+                    if 0.7 < dom_freq < 3.0 and signal_strength > 2.5:
+                        state["heart_bpm"] = int(dom_freq * 60)
+                        # HUMANITY CREDIT for having a living heartbeat
+                        humanity_credit += 30 
+                    elif signal_strength < 1.2:
+                        # Deepfakes often have NO physiological pulse signal
+                        risk_score += 15
+                        anomalies.append("Absence of Physiological Pulse (rPPG)")
+                except Exception: pass
+    except Exception as e:
+        print(f"[DeepGuard] rPPG Analysis failed: {e}")
+
     # --- AGGREGATION & HUMANITY CREDIT ---
-    humanity_credit = 0
+    humanity_credit = humanity_credit # Carry forward pulse credit
     
     # Credit for natural eye micro-movements (Even subtle ones)
     try:
