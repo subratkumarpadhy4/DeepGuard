@@ -288,8 +288,9 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             final_risk = int(avg_v_risk)
         if is_wm: 
             return {
+                "status": "success",
                 "risk_score": 0, 
-                "status": "AUTHENTICATED HUMAN", 
+                "verdict": "AUTHENTICATED HUMAN", 
                 "anomalies": ["Verified Digital Identity"],
                 "details": {"video_risk": 0, "audio_risk": 0, "humanity_score": 100}
             }
@@ -299,8 +300,9 @@ async def analyze_video_upload(file: UploadFile = File(...)):
         elif final_risk > 35: status = "SUSPICIOUS"
             
         return {
+            "status": "success",
             "risk_score": min(final_risk, 99), 
-            "status": status, 
+            "verdict": status, 
             "anomalies": robust_anoms + a_anoms + e_anoms,
             "evidence": state.get("last_evidence", []),
             "details": {
