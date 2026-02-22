@@ -529,7 +529,14 @@ def analyze_liveness(frame, state, override_timestamp=None):
     final_risk = max(0, final_risk - humanity_credit)
     
     # Cap "Absence of behavior" risk if no "Positive AI" artifacts are found
-    has_positive_ai_artifact = any(a in ["Unnatural Skin Smoothness", "High-Frequency Periodic Artifacts", "Unnatural Mouth Rendering", "Robotic/Jerky Motion"] for a in anomalies)
+    # Positive AI indicators are those that represent architectural flaws in GANs/Diffusion
+    positive_ai_indicators = [
+        "Unnatural Skin Smoothness", "High-Frequency Periodic Artifacts", 
+        "Unnatural Mouth Rendering", "Robotic/Jerky Motion", 
+        "Soulless Eyes", "Absence of Physiological Pulse", 
+        "Static Image Detected", "Lack of Natural Skin"
+    ]
+    has_positive_ai_artifact = any(any(ind in a for ind in positive_ai_indicators) for a in anomalies)
     
     if not has_positive_ai_artifact:
         # If it's just "stillness" and "low blinking", cap it at 35% (Suspicious but not Critical)
@@ -751,9 +758,9 @@ async def analyze_video_upload(file: UploadFile = File(...)):
         for anomaly, count in anomaly_counts.items():
             frequency = count / frames_processed
             
-            # HARD ARTIFACTS: These are almost never seen in real humans
+            # HARD ARTIFACTS: Definitive AI signatures
             if frequency > 0.30:
-                if any(x in anomaly for x in ["Mouth Rendering", "Jerky Motion", "Soulless Eyes"]):
+                if any(x in anomaly for x in ["Mouth Rendering", "Jerky Motion", "Soulless Eyes", "Physiological Pulse", "Static Image"]):
                     hard_artifacts += 1
                     robust_anomalies.append(anomaly)
             
