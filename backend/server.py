@@ -378,11 +378,11 @@ def analyze_liveness(frame, state, override_timestamp=None):
                 risk_score += 10 # Reduced from 15
                 anomalies.append(f"Unnatural Skin Smoothness (Blur Score: {avg_texture:.1f})")
             
-            # FFT anomaly: Toughened further
-            if avg_fft < 1.5: 
+            # FFT Check: Toughened further to avoid high-ISO sensor noise
+            if avg_fft < 1.0: 
                 risk_score += 5
                 anomalies.append("Lack of Natural Skin Micro-texture (FFT)")
-            elif avg_fft > 75.0: 
+            elif avg_fft > 120.0:  # Increased from 75.0
                 risk_score += 25
                 anomalies.append("High-Frequency Periodic Artifacts (Deepfake Noise)")
                 
@@ -676,54 +676,69 @@ async def analyze_video_upload(file: UploadFile = File(...)):
         avg_video_risk = video_risk_accum / frames_processed
         avg_humanity_credit = humanity_credit_accum / frames_processed
         
-        # --- POLARIZED AGGREGATION ---
+        # SUSTAINED ANOMALIES (> 25% of video duration)
         robust_anomalies = []
-        critical_indicators = 0
+        hard_artifacts = 0
+        soft_artifacts = 0
+        behavioral_indicators = 0
         
-        # SUSTAINED ANOMALIES (> 50% of video duration)
-        # Deepfakes carry artifacts throughout. Humans only have glitches periodically.
         for anomaly, count in anomaly_counts.items():
             frequency = count / frames_processed
-            if frequency > 0.50:
-                robust_anomalies.append(anomaly)
-                if any(x in anomaly for x in ["Periodic Artifacts", "Mouth Rendering", "Skin Micro-texture", "Jerky Motion", "Soulless Eyes"]):
-                    critical_indicators += 1
-                if any(x in anomaly for x in ["Abnormal Stare", "Statue-like"]) and frequency > 0.85:
-                    critical_indicators += 1
+            
+            # HARD ARTIFACTS: These are almost never seen in real humans
+            if frequency > 0.30:
+                if any(x in anomaly for x in ["Mouth Rendering", "Jerky Motion", "Soulless Eyes"]):
+                    hard_artifacts += 1
+                    robust_anomalies.append(anomaly)
+            
+            # SOFT ARTIFACTS: Can be triggered by good lighting/high-end cameras
+            # Moved "Periodic Artifacts" here because digital sensor noise can mimic it.
+            if frequency > 0.45:
+                if any(x in anomaly for x in ["Periodic Artifacts", "Skin Micro-texture", "Skin Smoothness", "Lack of Natural Skin"]):
+                    soft_artifacts += 1
+                    robust_anomalies.append(anomaly)
+
+            # BEHAVIORAL: Staring or statue-like behavior
+            if frequency > 0.60:
+                if any(x in anomaly for x in ["Abnormal Stare", "Statue-like"]):
+                    behavioral_indicators += 1
+                    robust_anomalies.append(anomaly)
 
         # SCORE SCALING: Force the gap
-        # Force risk down for humans log-linearly
-        if avg_humanity_credit > 5:
-            # Exponential decay of risk for humans
-            avg_video_risk = avg_video_risk * (0.8 ** (avg_humanity_credit / 2))
+        if avg_humanity_credit > 8:
+            # Powerfully reduce risk for humans
+            avg_video_risk = max(2, avg_video_risk - (avg_humanity_credit * 1.5))
             
-        if critical_indicators == 0:
-            avg_video_risk = min(avg_video_risk, 10) 
+        if (hard_artifacts + soft_artifacts + behavioral_indicators) == 0:
+            avg_video_risk = min(avg_video_risk, 8) 
         
-        # Boost only for multiple pieces of evidence
-        if critical_indicators >= 3: 
-            avg_video_risk = max(avg_video_risk, 96)
-        elif critical_indicators == 2:
-            avg_video_risk = max(avg_video_risk, 85)
-        elif critical_indicators == 1:
-            # ONE STRIKE: Can only make it "Suspicious" (max 35)
-            # This prevents the 78% result for humans.
-            avg_video_risk = min(max(avg_video_risk, 35), 45)
+        # --- NEW ESCALATION LOGIC ---
+        if hard_artifacts >= 1 or (soft_artifacts + behavioral_indicators) >= 3:
+            # Any hard artifact or multiple soft ones = Critical territory
+            if hard_artifacts >= 2: avg_video_risk = max(avg_video_risk, 92)
+            else: avg_video_risk = max(avg_video_risk, 75)
+        elif (soft_artifacts + behavioral_indicators) >= 1:
+            # Single soft artifact or behavioral signal only hits Suspicious
+            # This is the key fix for the 65% false positive
+            avg_video_risk = min(max(avg_video_risk, 30), 40)
             
-        # Polarization: Only push UP if it's already very high (> 80)
-        # Otherwise, if it's moderate, push it DOWN.
-        if avg_video_risk < 60:
-            avg_video_risk = avg_video_risk * 0.3 # Stronger push down for potential humans
-        elif avg_video_risk > 80:
-            avg_video_risk = min(99, avg_video_risk * 1.1)
+        # Hard floor ONLY for hard AI artifacts
+        if hard_artifacts >= 1:
+            avg_video_risk = max(avg_video_risk, 60)
+        else:
+            # If no hard artifacts, ensure humanity score can push it very low
+            if avg_humanity_credit > 18: 
+                avg_video_risk = min(avg_video_risk, 12)
+
+        # Polarization
+        if avg_video_risk < 30:
+            avg_video_risk *= 0.4
+        elif avg_video_risk > 75:
+            avg_video_risk = min(99, avg_video_risk * 1.2)
             
-        # "Dynamic Human" Override: If they move and blink, they are likely human
-        if avg_humanity_credit > 30 and critical_indicators < 2:
-            avg_video_risk = min(avg_video_risk, 10)
-            
-        # Final sanity check: If humanity credit is high, push it down even more
-        if avg_humanity_credit > 25:
-            avg_video_risk = min(avg_video_risk, 15)
+        # "Dynamic Human" Override: Only if ZERO critical indicators
+        if avg_humanity_credit > 35 and critical_indicators == 0:
+            avg_video_risk = min(avg_video_risk, 8)
 
         # --- AUDIO ANALYSIS ---
         audio_risk = 0
