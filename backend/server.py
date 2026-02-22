@@ -803,7 +803,7 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             avg_video_risk = min(99, avg_video_risk * 1.2)
             
         # "Dynamic Human" Override: Only if ZERO critical indicators
-        if avg_humanity_credit > 35 and critical_indicators == 0:
+        if avg_humanity_credit > 35 and (hard_artifacts + soft_artifacts) == 0:
             avg_video_risk = min(avg_video_risk, 8)
 
         # --- AUDIO ANALYSIS ---
