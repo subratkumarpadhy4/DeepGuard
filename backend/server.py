@@ -318,9 +318,9 @@ def analyze_liveness(frame, state, override_timestamp=None):
             avg_iris_var = np.mean(iris_var) * 100000 # Scale up
             
             # "Dead Eyes" check: Real eyes constantly saccade (micro-movements)
-            # Tightened from 1.0 to 1.5 to catch more high-quality AI stasis
-            if avg_iris_var < 1.5: 
-                risk_score += 40 # Increased from 25
+            # Increased threshold to 1.0 because 0.2 was too strict for some AI models
+            if avg_iris_var < 1.0: 
+                risk_score += 25
                 anomalies.append(f"Soulless Eyes (No saccadic movement: {avg_iris_var:.2f})")
     except IndexError:
         pass # Old MediaPipe model might not have iris landmarks
@@ -480,13 +480,13 @@ def analyze_liveness(frame, state, override_timestamp=None):
                     dom_freq = freqs[peak_idx]
                     signal_strength = fft_vals[peak_idx] / np.mean(fft_vals) # Simple SNR
                     
-                    if 0.7 < dom_freq < 3.0 and signal_strength > 3.0: # Toughened from 2.5
+                    if 0.7 < dom_freq < 3.0 and signal_strength > 2.5:
                         state["heart_bpm"] = int(dom_freq * 60)
                         # HUMANITY CREDIT for having a living heartbeat
-                        humanity_credit += 35 
-                    elif signal_strength < 1.5: # Toughened from 1.2
+                        humanity_credit += 30 
+                    elif signal_strength < 1.2:
                         # Deepfakes often have NO physiological pulse signal
-                        risk_score += 30 # Increased from 15
+                        risk_score += 15
                         anomalies.append("Absence of Physiological Pulse (rPPG)")
                 except Exception: pass
     except Exception as e:
@@ -551,8 +551,7 @@ def analyze_liveness(frame, state, override_timestamp=None):
         "yaw": float(yaw),
         "roll": float(roll),
         "variance": float(avg_movement),
-        "humanity_credit": humanity_credit,
-        "mar": float(mar)
+        "humanity_credit": humanity_credit
     }
 
     return min(final_risk, 100), anomalies, debug_info
@@ -719,7 +718,6 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             "fft_history": []
         }
         
-        temporal_mar = [] # Track (time, mar) for Lip-Sync Correlation
         video_risk_accum = 0
         humanity_credit_accum = 0
         anomaly_counts = {}
@@ -739,7 +737,6 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             # Use raw risk logic for the aggregation
             video_risk_accum += risk
             humanity_credit_accum += debug.get("humanity_credit", 0)
-            temporal_mar.append((current_video_time, debug.get("mar", 0)))
             
             for a in anomalies:
                 anomaly_counts[a] = anomaly_counts.get(a, 0) + 1
@@ -816,51 +813,22 @@ async def analyze_video_upload(file: UploadFile = File(...)):
         if avg_humanity_credit > 35 and (hard_artifacts + soft_artifacts) == 0:
             avg_video_risk = min(avg_video_risk, 8)
 
-        # --- FORENSIC 2: Audio-Visual Correlation (Lip Sync) ---
-        sync_anomalies = []
+        # --- AUDIO ANALYSIS ---
+        audio_risk = 0
+        audio_anomalies = []
         try:
             y, sr = librosa.load(temp_video_path, sr=None, duration=30)
-            if len(y) > 0 and len(temporal_mar) > 10:
-                audio_rms = librosa.feature.rms(y=y)[0]
-                audio_times = librosa.times_like(audio_rms, sr=sr)
-                
-                # Align MAR with Audio RMS
-                mar_times = np.array([p[0] for p in temporal_mar])
-                mar_vals = np.array([p[1] for p in temporal_mar])
-                
-                # Interpolate audio RMS to match MAR timestamps
-                aligned_rms = np.interp(mar_times, audio_times, audio_rms)
-                
-                # Calculate Correlation
-                # Only check if there is enough 'signal' in both audio and mouth movement
-                audio_activity = np.max(aligned_rms)
-                mar_activity = np.std(mar_vals)
-                
-                if mar_activity > 0.02 and audio_activity > 0.01:
-                    correlation = np.corrcoef(mar_vals, aligned_rms)[0, 1]
-                    
-                    # Only flag if there is a CLEAR loud mismatch
-                    if correlation < 0.15: # Tightened from 0.25
-                        if audio_activity > 0.03: # Only 'Hard' if audio is clearly audible
-                            hard_artifacts += 1
-                            sync_anomalies.append(f"Dubbed/Synthetic AV Sync (Correlation: {correlation:.2f})")
-                            avg_video_risk = max(avg_video_risk, 70)
-                        else:
-                            # Soft flag for quiet/ambiguous sync
-                            soft_artifacts += 1
-                            sync_anomalies.append(f"Suspicious AV Timing (Correlation: {correlation:.2f})")
-                else:
-                    correlation = 0 # No signal to correlate
-                
-                # Use existing audio analysis for voice quality
+            if len(y) > 0:
                 audio_risk, audio_anomalies = analyze_audio_liveness(y, sr, {})
-        except Exception as e:
-            print(f"[DeepGuard] AV Sync analysis failed: {e}")
-
-        # Final Status & Result
-        final_risk = (avg_video_risk * 0.7) + (audio_risk * 0.3) if audio_risk > 0 else avg_video_risk
-        final_risk = min(int(final_risk), 99)
+        except Exception: pass
         
+        # Aggregate final score
+        if audio_risk > 0:
+            final_risk = (avg_video_risk * 0.7) + (audio_risk * 0.3)
+        else:
+            final_risk = avg_video_risk
+            
+        final_risk = min(int(final_risk), 99)
         status = "SAFE"
         if final_risk > 70: status = "CRITICAL DEEPFAKE"
         elif final_risk > 35: status = "SUSPICIOUS"
@@ -869,12 +837,11 @@ async def analyze_video_upload(file: UploadFile = File(...)):
             "filename": file.filename,
             "risk_score": final_risk,
             "status": status,
-            "anomalies": robust_anomalies + audio_anomalies + sync_anomalies,
+            "anomalies": robust_anomalies + audio_anomalies,
             "details": {
                 "video_risk": int(avg_video_risk),
                 "audio_risk": int(audio_risk),
-                "av_sync_correlation": float(correlation) if 'correlation' in locals() else 0,
-                "humanity_score": int(avg_humanity_credit * 2.8)
+                "humanity_score": int(avg_humanity_credit * 2.8) # Normalized to 0-100 logic
             }
         }
 
