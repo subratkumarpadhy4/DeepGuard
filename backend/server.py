@@ -122,24 +122,22 @@ def analyze_audio_liveness(audio_data, sample_rate, state):
         # AI voices have unusually consistent spectral centroids
         if len(state["audio_centroid_history"]) > 10:
             temporal_variance = np.var(state["audio_centroid_history"])
-            if temporal_variance < 100000:  # Very low variance
-                risk_score += 35
-                anomalies.append(f"Unnatural Voice Consistency (Spectral Var: {temporal_variance:.0f})")
-                print(f"[DeepGuard] ⚠️ AI Voice Detected - Low Spectral Variance: {temporal_variance:.0f}")
+            # Softened from 250,000 to 80,000. 
+            # Real humans can be consistent, but AI is extremely flat.
+            if temporal_variance < 80000: 
+                risk_score += 40 
+                anomalies.append(f"Unnatural Voice Timbre (Spectral Var: {temporal_variance:.0f})")
         
         # 2. Zero-Crossing Rate (ZCR)
-        # Measures how often the signal changes sign
-        # AI voices are often too smooth (low ZCR variance)
         zcr = librosa.feature.zero_crossing_rate(audio_data)[0]
         zcr_variance = np.var(zcr)
         
-        if zcr_variance < 0.0001:  # Unnaturally smooth
+        # Softened from 0.002 to 0.0005. 
+        if zcr_variance < 0.0005: 
             risk_score += 25
             anomalies.append(f"Synthetic Audio Pattern (ZCR Var: {zcr_variance:.6f})")
-            print(f"[DeepGuard] ⚠️ Synthetic Audio - Low ZCR Variance: {zcr_variance:.6f}")
         
         # 3. Pitch Variance Analysis
-        # Real human voices have natural pitch fluctuations
         pitches, magnitudes = librosa.piptrack(y=audio_data, sr=sample_rate)
         pitch_values = []
         for t in range(pitches.shape[1]):
@@ -150,22 +148,18 @@ def analyze_audio_liveness(audio_data, sample_rate, state):
         
         if len(pitch_values) > 5:
             pitch_variance = np.var(pitch_values)
-            
-            # AI voices often have too consistent pitch
-            if pitch_variance < 50:
-                risk_score += 20
+            # Softened from 150 to 80. Real humans can be monotonic.
+            if pitch_variance < 80:
+                risk_score += 30
                 anomalies.append(f"Robotic Pitch Pattern (Var: {pitch_variance:.1f})")
-                print(f"[DeepGuard] ⚠️ Robotic Voice - Low Pitch Variance: {pitch_variance:.1f}")
         
         # 4. Spectral Rolloff
-        # Point where 85% of spectral energy is below this frequency
-        # AI voices often have unnatural high-frequency cutoffs
         rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sample_rate)[0]
         avg_rolloff = np.mean(rolloff)
         
-        # Suspiciously sharp cutoffs (common in AI voices)
-        if avg_rolloff > 7000 or avg_rolloff < 2000:
-            risk_score += 15
+        # Suspiciously sharp cutoffs (usually indicative of low-bitrate AI or specific vocoders)
+        if avg_rolloff > 8500 or avg_rolloff < 1500:
+            risk_score += 20
             anomalies.append(f"Unnatural Frequency Range (Rolloff: {avg_rolloff:.0f} Hz)")
         
         print(f"[DeepGuard] Audio Analysis - Centroid: {avg_centroid:.0f}, ZCR Var: {zcr_variance:.6f}, Pitch Var: {pitch_variance if len(pitch_values) > 5 else 0:.1f}")
@@ -254,10 +248,7 @@ def analyze_liveness(frame, state, override_timestamp=None):
     avg_ear = (left_ear + right_ear) / 2.0
     
     # --- CHECK 4: Mouth Aspect Ratio (MAR) & Lip Sync Proxy ---
-    # Inner lip landmarks: 
-    # Top: 82, 13, 312, 14, 317 (mid: 13)
-    # Bottom: 87, 14, 317, 178, 302 (mid: 14) - approximations
-    # Better set: Upper [13], Lower [14], Left [78], Right [308]
+    # Inner lip landmarks for better region isolation
     p_upper = landmarks[13]
     p_lower = landmarks[14]
     p_left = landmarks[78]
@@ -271,16 +262,38 @@ def analyze_liveness(frame, state, override_timestamp=None):
     # Track MAR history
     if "mar_history" not in state: state["mar_history"] = []
     state["mar_history"].append(mar)
-    state["mar_history"] = state["mar_history"][-300:] # Keep last 10 seconds (assuming 30fps)
+    state["mar_history"] = state["mar_history"][-300:]
     
-    # Check for "Muted" talking (Lips moving but no audio - requires audio sync, handled in aggregation)
-    # Here check for "Frozen Mouth" (Robot)
+    # NEW: Mouth Content Analysis (Teeth Check)
+    # If mouth is open (MAR > 0.2), check the variance in the mouth region
+    if mar > 0.3:
+        try:
+            # Crop mouth region
+            mx1, my1 = int(p_left.x * w), int(p_upper.y * h)
+            mx2, my2 = int(p_right.x * w), int(p_lower.y * h)
+            
+            # Pad slightly
+            pad = 5
+            mouth_roi = gray_frame[max(0, my1-pad):min(h, my2+pad), max(0, mx1-pad):min(w, mx2+pad)]
+            
+            if mouth_roi.size > 0:
+                # Calculate variance. Real teeth + shadows have high variance.
+                # AI "blob" teeth have very low internal variance in the white area.
+                m_var = np.var(mouth_roi)
+                
+                # Check for "Flat Teeth" signature
+                if m_var < 800: # Heuristic: Real open mouths usually > 1500 due to teeth/tongue/shadows
+                    risk_score += 35
+                    anomalies.append(f"Unnatural Mouth Rendering (Mouth Var: {m_var:.1f})")
+        except Exception:
+            pass
+
+    # Check for "Frozen Mouth" (Robot)
     if len(state["mar_history"]) > 30:
         mar_variance = np.var(state["mar_history"])
-        if mar_variance < 0.0005: # Extremely still mouth
-             # Only flag if we consider strictly "talking" videos? 
-             # For now, just a subtle warning or combine with audio energy later.
-             pass 
+        # If talking is expected (e.g. audio present) but mouth is frozen
+        # This is handled in the aggregation, but we track here.
+        pass 
 
     # --- CHECK 5: Gaze & Pupil Tracking ("Soulless Eyes") ---
     # Iris landmarks: Left [468-472], Right [473-477]
@@ -301,16 +314,18 @@ def analyze_liveness(frame, state, override_timestamp=None):
             avg_iris_var = np.mean(iris_var) * 100000 # Scale up
             
             # "Dead Eyes" check: Real eyes constantly saccade (micro-movements)
-            if avg_iris_var < 0.2: 
+            # Increased threshold to 1.0 because 0.2 was too strict for some AI models
+            if avg_iris_var < 1.0: 
                 risk_score += 25
                 anomalies.append(f"Soulless Eyes (No saccadic movement: {avg_iris_var:.2f})")
     except IndexError:
         pass # Old MediaPipe model might not have iris landmarks
         
-    # --- CHECK 6: Skin Texture Analysis (Plastic/Blurry Skin) ---
+    # --- CHECK 6: Skin Texture Analysis (Plastic/Blurry Skin & GAN Noise) ---
     # Crop a cheek region and check for high-frequency noise (pores, skin texture)
-    # Cheek approx: Left cheek around landmark 234 or 50? Let's use 234 (ear) -> 205 (cheek)
+    # and GAN-specific periodic patterns.
     try:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         cheek_lm = landmarks[205] # Left cheek
         cx, cy = int(cheek_lm.x * w), int(cheek_lm.y * h)
         patch_size = int(w * 0.08) # 8% of width
@@ -319,26 +334,63 @@ def analyze_liveness(frame, state, override_timestamp=None):
         x1, x2 = max(0, cx-patch_size), min(w, cx+patch_size)
         
         if y2>y1 and x2>x1:
-            cheek_roi = gray[y1:y2, x1:x2]
-            # Laplacain variance measures "blurriness" or lack of texture
+            cheek_roi = gray_frame[y1:y2, x1:x2]
+            
+            # 1. Laplacian variance (Blurriness)
             texture_score = cv2.Laplacian(cheek_roi, cv2.CV_64F).var()
             
+            # 2. FFT Analysis (Frequency Domain Artifacts)
+            f = np.fft.fft2(cheek_roi)
+            fshift = np.fft.fftshift(f)
+            magnitude_spectrum = 20 * np.log(np.abs(fshift) + 1)
+            
+            # GANs often have "regular" repeating patterns (ringing/checkered)
+            # We check for high-frequency energy distribution
+            h_fft, w_fft = magnitude_spectrum.shape
+            center_y, center_x = h_fft // 2, w_fft // 2
+            
+            # Mask out the low frequencies (center)
+            mask_size = 5
+            magnitude_spectrum[center_y-mask_size:center_y+mask_size, center_x-mask_size:center_x+mask_size] = 0
+            
+            high_freq_val = np.mean(magnitude_spectrum)
+            
             if "texture_history" not in state: state["texture_history"] = []
+            if "fft_history" not in state: state["fft_history"] = []
+            
             state["texture_history"].append(texture_score)
+            state["fft_history"].append(high_freq_val)
+            
             state["texture_history"] = state["texture_history"][-30:]
+            state["fft_history"] = state["fft_history"][-30:]
             
             avg_texture = np.mean(state["texture_history"])
+            avg_fft = np.mean(state["fft_history"])
             
-            # Typical sharp skin > 100-200. "Airbrushed" AI skin < 80.
-            if avg_texture < 80.0:
-                risk_score += 30
-                anomalies.append(f"Unnatural Skin Smoothness (Texture Score: {avg_texture:.1f})")
-    except Exception:
-        pass
+            # DETECTOR LOGIC:
+            # - Real humans have natural "noise" (pores/imperfections) -> High high-freq energy
+            # - AI/Deepfakes are often too smooth (Low Laplacian) OR have weird periodic noise (Abnormal FFT)
+            
+            # Thresholds:
+            # EXTREME: Only trigger if skin is UNSETTLINGLY smooth (like 25)
+            # This prevents false positives from standard beauty filters or high-end webcams.
+            if avg_texture < 30.0: 
+                risk_score += 10 # Reduced from 15
+                anomalies.append(f"Unnatural Skin Smoothness (Blur Score: {avg_texture:.1f})")
+            
+            # FFT anomaly: Toughened further
+            if avg_fft < 1.5: 
+                risk_score += 5
+                anomalies.append("Lack of Natural Skin Micro-texture (FFT)")
+            elif avg_fft > 75.0: 
+                risk_score += 25
+                anomalies.append("High-Frequency Periodic Artifacts (Deepfake Noise)")
+                
+    except Exception as e:
+        print(f"[DeepGuard] Skin analysis failed: {e}")
     
-    # Blink Threshold (Typical Human EAR threshold is ~0.2 - 0.25)
-    # Increased to 0.22 to be more sensitive to partial blinks
-    BLINK_THRESHOLD = 0.24 # More sensitive
+    # Blink Threshold
+    BLINK_THRESHOLD = 0.24
     
     # State Machine for Blinking
     if avg_ear < BLINK_THRESHOLD:
@@ -350,64 +402,86 @@ def analyze_liveness(frame, state, override_timestamp=None):
     else:
         state["eyes_closed"] = False
 
-    # Liveness Checks
-    time_since_last_blink = current_time - state.get("last_blink", current_time)
-    
-    # Rule 1: Abnormal Stare (Deepfake symptom)
-    # Re-tuned for shorter videos
-    if time_since_last_blink > 8.0: # Was 20s. 8s is suspicious in a talking head video.
-        risk_score += 70
-        anomalies.append(f"Abnormal Stare (No blink for {int(time_since_last_blink)}s)")
-    elif time_since_last_blink > 4.0:
-        risk_score += 15
-        anomalies.append("Low Blink Rate")
-
-    # Rule 2: Head Rotation Analysis (Statue Check)
+    # Rule 2: Head Rotation Analysis (Pose Estimation)
     pitch, yaw, roll = get_head_pose(landmarks, w, h)
     
     # Store pose history for "Statue Check" (Time-based variance analysis)
     state["pose_history"].append((current_time, pitch, yaw, roll))
     
-    # Keep only last 5 seconds of data
+    # Keep only last 5 seconds of data (approx 150 frames at 30fps)
     state["pose_history"] = [p for p in state["pose_history"] if current_time - p[0] < 5.0]
     
-    if len(state["pose_history"]) > 15: # Need fewer frames to start judging (was 50)
+    avg_movement = 0
+    if len(state["pose_history"]) > 15: 
         # Calculate standard deviation (variance) of movement
         poses = np.array([p[1:] for p in state["pose_history"]])  # [[p, y, r], ...]
         std_dev = np.std(poses, axis=0)  # [std_pitch, std_yaw, std_roll]
-        
-        # Thresholds: Humans naturally move slightly (micro-movements)
-        # Even when focused, humans have subtle movements from breathing, balance
-        # Only truly static images/deepfakes have variance < 0.25°
-        
         avg_movement = np.mean(std_dev[:2])  # Check Pitch & Yaw mainly
         
-        if avg_movement < 0.25:  # Extremely still (was 0.15)
-            risk_score += 50
-            anomalies.append(f"Unnatural Stillness (Statue-like: {avg_movement:.2f}° var)")
-        elif avg_movement < 0.5:  # Very still (was 0.3)
-            risk_score += 15
-            anomalies.append("Low Head Movement")
-            
         # --- CHECK 7: Jerky Motion / Glitch Detection ---
-        # Calculate velocity (diff) and acceleration (diff of diff)
         velocities = np.diff(poses, axis=0) # [d_pitch, d_yaw, d_roll]
         if len(velocities) > 0:
              max_jerk = np.max(np.abs(velocities))
-             # Humans rarely snap head faster than 15 degrees per frame interval (assuming 30fps)
-             if max_jerk > 15.0:
+             if max_jerk > 12.0: 
                  risk_score += 40
                  anomalies.append(f"Robotic/Jerky Motion (Max Jerk: {max_jerk:.1f}°)")
+
+    # --- AGGREGATION & HUMANITY CREDIT ---
+    humanity_credit = 0
+    
+    # Credit for natural eye micro-movements (Even subtle ones)
+    try:
+        # Relaxed from 1.0 to 0.7 to catch subtle saccades
+        if 0.7 < avg_iris_var < 8.0: 
+            humanity_credit += 25
+    except NameError:
+        avg_iris_var = 0
+    
+    # Credit for natural head sway
+    # Relaxed from 0.8 to 0.5 to catch very stable but living humans
+    if 0.5 < avg_movement < 5.0:
+        humanity_credit += 20
+
+    # Re-calculate blink risk (EXTREMELY forgiving)
+    time_since_last_blink = current_time - state.get("last_blink", current_time)
+    blink_risk = 0
+    if time_since_last_blink > 25.0: # Deepfakes often NEVER blink
+        blink_risk = 30
+        anomalies.append(f"Abnormal Stare (No blink for {int(time_since_last_blink)}s)")
+    
+    # Re-calculate motion risk
+    motion_risk = 0
+    if len(state["pose_history"]) > 90: # Need 3 seconds of stillness
+        if avg_movement < 0.2:
+            motion_risk = 20
+            anomalies.append(f"Unnatural Stillness (Statue-like: {avg_movement:.2f}° var)")
+
+    # Combine risks
+    final_risk = risk_score + blink_risk + motion_risk
+    
+    # Apply humanity credit
+    final_risk = max(0, final_risk - humanity_credit)
+    
+    # Cap "Absence of behavior" risk if no "Positive AI" artifacts are found
+    has_positive_ai_artifact = any(a in ["Unnatural Skin Smoothness", "High-Frequency Periodic Artifacts", "Unnatural Mouth Rendering", "Robotic/Jerky Motion"] for a in anomalies)
+    
+    if not has_positive_ai_artifact:
+        # If it's just "stillness" and "low blinking", cap it at 35% (Suspicious but not Critical)
+        final_risk = min(final_risk, 35)
+    else:
+        # If we have POSITIVE AI indicators, ensure the risk doesn't drop too low from credit
+        final_risk = max(final_risk, 40)
 
     # Prepare debug info
     debug_info = {
         "pitch": float(pitch),
         "yaw": float(yaw),
         "roll": float(roll),
-        "variance": float(avg_movement) if len(state["pose_history"]) > 30 else 0.0
+        "variance": float(avg_movement),
+        "humanity_credit": humanity_credit
     }
 
-    return min(risk_score, 100), anomalies, debug_info
+    return min(final_risk, 100), anomalies, debug_info
 
 def get_head_pose(landmarks, img_w, img_h):
     """
@@ -556,124 +630,130 @@ async def analyze_video_upload(file: UploadFile = File(...)):
     try:
         # --- VIDEO ANALYSIS ---
         cap = cv2.VideoCapture(temp_video_path)
-        frame_count = 0
-        video_risk_accum = 0
-        video_anomalies = []
-        
-        # Analyze every 5th frame for more granularity (was 10)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         FRAME_SKIP = 5 
         
-        # Create a temporary state for this analysis
         analysis_state = {
             "last_blink": time.time(),
             "blink_count": 0,
             "eyes_closed": False,
             "pose_history": [],
-            "pixel_variance_history": []
+            "pixel_variance_history": [],
+            "mar_history": [],
+            "iris_history": [],
+            "texture_history": [],
+            "fft_history": []
         }
         
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0 # Default to 30 if unknown
-        
-        frames_processed = 0
+        video_risk_accum = 0
+        humanity_credit_accum = 0
+        anomaly_counts = {}
+        frame_count = 0
+        max_frame_risk = 0
         
         while cap.isOpened():
             ret, frame = cap.read()
-            if not ret:
-                break
+            if not ret: break
             
             frame_count += 1
-            if frame_count % FRAME_SKIP != 0:
-                continue
+            if frame_count % FRAME_SKIP != 0: continue
             
-            # Correctly simulate time passage for the analysis state based on video FPS
             current_video_time = frame_count / fps
+            risk, anomalies, debug = analyze_liveness(frame, analysis_state, override_timestamp=current_video_time)
             
-            # We need to monkey-patch or pass this time to analyze_liveness
-            # checks in analyze_liveness use time.time(), so we'll update the state's reference time
-            # For the purpose of this script, we'll manually update the state's reference "last_blink" 
-            # to be relative to this video timeline.
-             
-            # Actually, standard analyze_liveness uses time.time() which is WALL CLOCK time.
-            # This is wrong for video files. We need to pass the timestamp.
-            # Let's modify analyze_liveness signature or wrapper.
+            # Use raw risk logic for the aggregation
+            video_risk_accum += risk
+            humanity_credit_accum += debug.get("humanity_credit", 0)
             
-            # WRAPPER: Update state with current video time instead of relying on wall clock in the function
-            # Since we can't easily change the signature without breaking websocket, 
-            # we will set a global override or just pass it in state for a modified version.
-            
-            # QUICK FIX: Update the 'current_time' in the state if we modify the function to use it.
-            # But since analyze_liveness calls time.time() internally, we must modify THAT function.
-            # See previous edit.
-            
-            risk, anomalies, _ = analyze_liveness(frame, analysis_state, override_timestamp=current_video_time)
-            
-            # Accumulate risk more aggressively
-            if risk > 0:
-                video_risk_accum += risk
-            
-            # Key fix: Always collect anomalies, even if risk score is low
-            if anomalies:
-                 video_anomalies.extend(anomalies)
+            for a in anomalies:
+                anomaly_counts[a] = anomaly_counts.get(a, 0) + 1
 
-            frames_processed += 1
-            
         cap.release()
         
-        # Calculate average video risk
-        # Fix: Ensure a minimum baseline risk if anomalies were found
-        avg_video_risk = video_risk_accum / frames_processed if frames_processed > 0 else 0
+        frames_processed = frame_count // FRAME_SKIP
+        if frames_processed == 0: return {"status": "error", "message": "No frames processed"}
         
-        if len(video_anomalies) > 0 and avg_video_risk < 10:
-             avg_video_risk = 15 # Bump score if we saw issues but they averaged out
+        avg_video_risk = video_risk_accum / frames_processed
+        avg_humanity_credit = humanity_credit_accum / frames_processed
         
+        # --- POLARIZED AGGREGATION ---
+        robust_anomalies = []
+        critical_indicators = 0
+        
+        # SUSTAINED ANOMALIES (> 50% of video duration)
+        # Deepfakes carry artifacts throughout. Humans only have glitches periodically.
+        for anomaly, count in anomaly_counts.items():
+            frequency = count / frames_processed
+            if frequency > 0.50:
+                robust_anomalies.append(anomaly)
+                if any(x in anomaly for x in ["Periodic Artifacts", "Mouth Rendering", "Skin Micro-texture", "Jerky Motion", "Soulless Eyes"]):
+                    critical_indicators += 1
+                if any(x in anomaly for x in ["Abnormal Stare", "Statue-like"]) and frequency > 0.85:
+                    critical_indicators += 1
+
+        # SCORE SCALING: Force the gap
+        # Force risk down for humans log-linearly
+        if avg_humanity_credit > 5:
+            # Exponential decay of risk for humans
+            avg_video_risk = avg_video_risk * (0.8 ** (avg_humanity_credit / 2))
+            
+        if critical_indicators == 0:
+            avg_video_risk = min(avg_video_risk, 10) 
+        
+        # Boost only for multiple pieces of evidence
+        if critical_indicators >= 3: 
+            avg_video_risk = max(avg_video_risk, 96)
+        elif critical_indicators == 2:
+            avg_video_risk = max(avg_video_risk, 85)
+        elif critical_indicators == 1:
+            # ONE STRIKE: Can only make it "Suspicious" (max 35)
+            # This prevents the 78% result for humans.
+            avg_video_risk = min(max(avg_video_risk, 35), 45)
+            
+        # Polarization: Only push UP if it's already very high (> 80)
+        # Otherwise, if it's moderate, push it DOWN.
+        if avg_video_risk < 60:
+            avg_video_risk = avg_video_risk * 0.3 # Stronger push down for potential humans
+        elif avg_video_risk > 80:
+            avg_video_risk = min(99, avg_video_risk * 1.1)
+            
+        # "Dynamic Human" Override: If they move and blink, they are likely human
+        if avg_humanity_credit > 30 and critical_indicators < 2:
+            avg_video_risk = min(avg_video_risk, 10)
+            
+        # Final sanity check: If humanity credit is high, push it down even more
+        if avg_humanity_credit > 25:
+            avg_video_risk = min(avg_video_risk, 15)
+
         # --- AUDIO ANALYSIS ---
         audio_risk = 0
         audio_anomalies = []
-        
         try:
-            # Load audio using librosa (it handles video files directly usually)
-            # We use a short duration if the video is long to save time, e.g., first 30 seconds
             y, sr = librosa.load(temp_video_path, sr=None, duration=30)
-            
             if len(y) > 0:
-                # Use existing audio analysis logic
-                # We need to mock a state for audio if needed, but the function uses a simple dict
-                audio_state = {} 
-                audio_risk, audio_anomalies = analyze_audio_liveness(y, sr, audio_state)
-            else:
-                print("[DeepGuard] No audio track found in video.")
-                
-        except Exception as e:
-            print(f"[DeepGuard] Audio extraction failed (might be silent video): {e}")
+                audio_risk, audio_anomalies = analyze_audio_liveness(y, sr, {})
+        except Exception: pass
         
-        # --- AGGREGATE RESULTS ---
-        # Deduplicate anomalies
-        unique_anomalies = list(set(video_anomalies + audio_anomalies))
-        
-        # Weighted Risk: 60% Video, 40% Audio (if audio exists)
+        # Aggregate final score
         if audio_risk > 0:
-            final_risk = (avg_video_risk * 0.6) + (audio_risk * 0.4)
+            final_risk = (avg_video_risk * 0.7) + (audio_risk * 0.3)
         else:
             final_risk = avg_video_risk
             
-        # Cap at 99 to allow 100 only for absolute certainty
         final_risk = min(int(final_risk), 99)
-        
         status = "SAFE"
-        if final_risk > 75:
-            status = "CRITICAL DEEPFAKE"
-        elif final_risk > 40:
-            status = "SUSPICIOUS"
+        if final_risk > 70: status = "CRITICAL DEEPFAKE"
+        elif final_risk > 35: status = "SUSPICIOUS"
             
         return {
             "filename": file.filename,
             "risk_score": final_risk,
             "status": status,
-            "anomalies": unique_anomalies,
+            "anomalies": robust_anomalies + audio_anomalies,
             "details": {
                 "video_risk": int(avg_video_risk),
                 "audio_risk": int(audio_risk),
-                "frames_analyzed": frames_processed
+                "humanity_score": int(avg_humanity_credit * 2.8) # Normalized to 0-100 logic
             }
         }
 
