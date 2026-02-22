@@ -242,8 +242,81 @@
         }
 
         .hero-highlight {
-            color: var(--accent);
+            background: linear-gradient(120deg, #e0f2fe, #bbf7d0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* FORENSIC SCANNER ANIMATION */
+        .forensic-scanner {
             position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+
+        .scanner-ring {
+            position: absolute;
+            inset: 0;
+            border: 2px solid var(--primary-soft);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 2s linear infinite;
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--primary));
+            transform-origin: left center;
+            animation: spin 1.5s linear infinite;
+            filter: drop-shadow(0 0 5px var(--primary));
+        }
+
+        .scanner-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse-out 1.5s ease-out infinite;
+        }
+
+        @keyframes pulse-out {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(8);
+                opacity: 0;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .hero-subtitle {
@@ -760,11 +833,178 @@
                             <div style="font-size: 0.6rem; text-transform: uppercase;">Trust Score</div>
                         </div>
                     </div>
-                    <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <<<<<<< HEAD <div
+                        style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div
                             style="padding: 15px; background: var(--bg); border-radius: 12px; border: 1px solid var(--card-border);">
                             <div style="font-size: 0.6rem; color: var(--text-muted);">STATUS</div>
                             <div style="font-weight: 700; color: var(--accent);">SECURE</div>
+                            =======
+                            <div class="hero-ring-wrap">
+                                <div class="hero-ring">
+                                    <div class="hero-ring-inner">
+                                        <div class="hero-ring-score">99</div>
+                                        <div class="hero-ring-label">Trust score</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hero-card-footer">
+                            <div class="hero-card-footer-text">
+                                <strong>Edge‑only analysis.</strong>
+                                No screenshots, recordings, or biometric templates are stored in the cloud.
+                            </div>
+                            <div class="hero-card-footer-stats">
+                                <div>
+                                    <span class="hero-card-footer-label">Regions</span>
+                                    <span class="hero-card-footer-value">18+</span>
+                                </div>
+                                <div>
+                                    <span class="hero-card-footer-label">Uptime</span>
+                                    <span class="hero-card-footer-value">99.99%</span>
+                                </div>
+                            </div>
+                        </div>
+                        </aside>
+        </main>
+
+        <section>
+            <div class="section-inner">
+                <div class="section-header">
+                    <div class="section-eyebrow">Advanced forensics</div>
+                    <h2>Verification built for security teams, not marketing demos.</h2>
+                    <p>
+                        DeepGuard layers computer‑vision, audio forensics, and behavioral biometrics to validate the
+                        real
+                        human on the other side of every call.
+                    </p>
+                </div>
+                <div class="grid">
+                    <div class="card">
+                        <div class="icon-box">⚡</div>
+                        <h3>Live liveness checks</h3>
+                        <p class="card-text">
+                            Micro‑expression and blink‑pattern analysis distinguish real faces from replayed or
+                            screen‑injected footage in under 50&nbsp;ms.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">🎙️</div>
+                        <h3>Voice clone detection</h3>
+                        <p class="card-text">
+                            Deep spectral fingerprints flag synthetic speech, cloned voices, and stitching artifacts
+                            across any conferencing platform.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">🔒</div>
+                        <h3>Policy‑driven isolation</h3>
+                        <p class="card-text">
+                            Auto‑lock high‑risk sessions, block screen control, or trigger step‑up authentication
+                            whenever
+                            risk scores cross your threshold.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="upload-section"
+            style="margin-top: 40px; background: rgba(15, 23, 42, 0.6); border-color: rgba(34, 197, 94, 0.3);">
+            <div class="section-inner">
+                <div class="section-header" style="text-align: center; max-width: 700px; margin: 0 auto 40px;">
+                    <div class="section-eyebrow" style="color: var(--primary);">Try it yourself</div>
+                    <h2>Deepfake Analysis Playground</h2>
+                    <p>
+                        Upload a video file to run our advanced liveness and audio forensics engine.
+                        See the risk score and detected anomalies in real-time.
+                    </p>
+                </div>
+
+                <div class="upload-container" style="max-width: 600px; margin: 0 auto;">
+                    <label id="drop-zone" class="drop-zone" for="file-input">
+                        <div class="drop-icon">📁</div>
+                        <h3 style="margin-bottom: 8px;">Drag & Drop Video Here</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                            or click to browse (MP4, WEBM, MOV)
+                        </p>
+                        <input type="file" id="file-input" accept="video/*" style="display: none;">
+                        <div class="btn-secondary">
+                            Select File
+                        </div>
+                    </label>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" style="display: none; text-align: center; padding: 60px;">
+                        <div class="forensic-scanner">
+                            <div class="scanner-ring"></div>
+                            <div class="scanner-line"></div>
+                            <div class="scanner-center">
+                                <div class="pulse"></div>
+                            </div>
+                        </div>
+                        <p
+                            style="margin-top: 30px; color: var(--text-body); font-family: monospace; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase;">
+                            Analyzing Frames... <span id="loading-dots"></span>
+                        </p>
+                        <div style="font-size: 0.65rem; color: var(--primary); margin-top: 10px; opacity: 0.8;">
+                            FFT SPECTRAL SCAN IN PROGRESS
+                        </div>
+                    </div>
+
+                    <!-- Results State -->
+                    <div id="result-state"
+                        style="display: none; background: rgba(15, 23, 42, 0.8); border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.2); overflow: hidden;">
+                        <div class="result-header"
+                            style="padding: 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.2); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">ANALYSIS
+                                    RESULT</div>
+                                <div id="result-status"
+                                    style="font-size: 1.5rem; font-weight: 700; color: var(--text-heading);">SAFE</div>
+                            </div>
+                            <div class="score-circle">
+                                <span id="result-score">12</span>%
+                                <div
+                                    style="font-size: 0.6rem; color: var(--text-muted); font-weight: 400; margin-top: -4px;">
+                                    RISK</div>
+                            </div>
+                        </div>
+
+                        <!-- Forensic Preview Area -->
+                        <div id="forensic-preview-container"
+                            style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border-radius: 8px;">
+                            <video id="result-video-preview"
+                                style="width: 100%; height: 100%; object-fit: contain; z-index: 1;"></video>
+                            <div id="xai-overlay"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 10;">
+                            </div>
+                            <div id="heatmap-label"
+                                style="display: none; position: absolute; bottom: 10px; left: 10px; padding: 4px 8px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; z-index: 15;">
+                                Forensic Heatmap Active</div>
+                        </div>
+
+                        <div
+                            style="padding: 24px; text-align: center; border-bottom: 1px dashed rgba(148, 163, 184, 0.2);">
+                            <button id="investigate-btn" class="btn-primary" onclick="toggleInvestigate()"
+                                style="font-size: 0.8rem; background: linear-gradient(135deg, #ef4444, #b91c1c); border-color: #fca5a5; box-shadow: 0 10px 20px rgba(220, 38, 38, 0.4);">
+                                🔍 Investigate Forensic Proof
+                            </button>
+                        </div>
+
+                        <div style="padding: 24px;">
+                            <h4
+                                style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Detected Anomalies</h4>
+                            <ul id="anomaly-list"
+                                style="list-style: none; padding: 0; margin: 0; color: var(--text-body); font-size: 0.9rem;">
+                                <!-- Anomalies will vary here -->
+                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">No
+                                    critical anomalies detected.</li>
+                            </ul>
+                            >>>>>>> 06b80a3 (feat: enhance Moire and Brand detection, calibrate forensic thresholds for
+                            high-end AI, and fix head pose unit conversion)
                         </div>
                         <div
                             style="padding: 15px; background: var(--bg); border-radius: 12px; border: 1px solid var(--card-border);">
@@ -773,36 +1013,36 @@
                         </div>
                     </div>
                 </div>
-            </section>
-            <section id="capabilitiesView">
-                <div class="section-header">
-                    <div class="section-eyebrow">Enterprise Grade</div>
-                    <h2>DeepGuard <span class="hero-highlight">Security Layers</span></h2>
-                    <p>Triple-layered behavioral analysis to ensure stream integrity and identity authenticity.</p>
+        </section>
+        <section id="capabilitiesView">
+            <div class="section-header">
+                <div class="section-eyebrow">Enterprise Grade</div>
+                <h2>DeepGuard <span class="hero-highlight">Security Layers</span></h2>
+                <p>Triple-layered behavioral analysis to ensure stream integrity and identity authenticity.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">D</div>
+                    <h3>Face Synthesis Shield</h3>
+                    <p>Uses neural-layer artifact detection to identify synthetic faces and deepfake masks in
+                        real-time
+                        video streams.</p>
                 </div>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">D</div>
-                        <h3>Face Synthesis Shield</h3>
-                        <p>Uses neural-layer artifact detection to identify synthetic faces and deepfake masks in
-                            real-time
-                            video streams.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">D</div>
-                        <h3>Voice Clone Guard</h3>
-                        <p>Analyzes speech spectrum patterns to detect AI-cloned audio and synthetic voice models with
-                            sub-millisecond latency.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">D</div>
-                        <h3>Stream Injection Defense</h3>
-                        <p>Detects virtual camera bypasses and software-level stream injections designed to spoof
-                            hardware
-                            video output.</p>
-                    </div>
+                <div class="feature-card">
+                    <div class="feature-icon">D</div>
+                    <h3>Voice Clone Guard</h3>
+                    <p>Analyzes speech spectrum patterns to detect AI-cloned audio and synthetic voice models with
+                        sub-millisecond latency.</p>
                 </div>
-            </section>
+                <div class="feature-card">
+                    <div class="feature-icon">D</div>
+                    <h3>Stream Injection Defense</h3>
+                    <p>Detects virtual camera bypasses and software-level stream injections designed to spoof
+                        hardware
+                        video output.</p>
+                </div>
+            </div>
+        </section>
         </main>
 
         <section id="playgroundView" class="view-container">
