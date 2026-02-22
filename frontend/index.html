@@ -2,262 +2,316 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeepGuard AI</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <style>
         :root {
-            --bg: #020617;
-            --card-bg: rgba(15, 23, 42, 0.96);
-            --card-border: rgba(148, 163, 184, 0.35);
-            --accent: #22c55e;
-            --accent-soft: rgba(34, 197, 94, 0.16);
-            --danger: #f97373;
-            --text-main: #e5e7eb;
-            --text-soft: #9ca3af;
+            /* Light Theme (Default) - Greenish */
+            --bg: #f0fdf4;
+            --card-bg: #ffffff;
+            --card-border: rgba(5, 150, 105, 0.12);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+            --danger: #ef4444;
+            --text-main: #064e3b;
+            --text-soft: #065f46;
             --text-muted: #6b7280;
+            --glass: rgba(255, 255, 255, 0.9);
+            --ring-bg: #dcfce7;
+            --shadow: 0 4px 12px rgba(6, 78, 59, 0.05);
+        }
+
+        .dark-theme {
+            /* Dark Theme (Deep Forest/Navy) */
+            --bg: #020617;
+            --card-bg: #0f172a;
+            --card-border: rgba(16, 185, 129, 0.2);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --danger: #f87171;
+            --text-main: #f0fdf4;
+            --text-soft: #94a3b8;
+            --text-muted: #64748b;
+            --glass: rgba(15, 23, 42, 0.8);
+            --ring-bg: rgba(5, 150, 105, 0.15);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-            background:
-                radial-gradient(circle at top, rgba(34, 197, 94, 0.18), transparent 55%),
-                radial-gradient(circle at bottom, rgba(59, 130, 246, 0.18), transparent 55%),
-                var(--bg);
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
             color: var(--text-main);
-            width: 360px;
-            margin: 0;
-            padding: 14px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .shell {
-            width: 100%;
-            border-radius: 18px;
-            background: linear-gradient(135deg, rgba(148, 163, 184, 0.35), transparent);
-            padding: 1px;
+            width: 380px;
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
         }
 
         .container {
-            border-radius: 18px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            padding: 14px 14px 12px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 20px;
         }
 
+        /* HEADER */
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            gap: 8px;
+            align-items: center;
         }
 
-        .logo-wrap {
+        .logo-block {
             display: flex;
+            align-items: center;
             gap: 10px;
-            align-items: center;
-        }
-
-        .logo-badge {
-            width: 32px;
-            height: 32px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at 30% 0%, #4ade80, #16a34a 40%, #111827 75%);
-            box-shadow:
-                0 0 0 1px rgba(34, 197, 94, 0.5),
-                0 8px 18px rgba(22, 163, 74, 0.5);
-            font-size: 18px;
-        }
-
-        .logo-text-block {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .logo {
-            font-weight: 700;
-            font-size: 1.05rem;
-            letter-spacing: 0.02em;
             cursor: pointer;
         }
 
-        .logo-sub {
-            font-size: 0.7rem;
-            color: var(--text-muted);
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: white;
+            box-shadow: 0 4px 10px var(--accent-glow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .pill {
-            padding: 4px 10px;
-            border-radius: 999px;
+        .logo-text h1 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .logo-text p {
             font-size: 0.7rem;
+            color: var(--text-soft);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-soft);
+            transition: all 0.2s;
+        }
+
+        .theme-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .theme-btn:hover {
+            border-color: var(--accent);
             color: var(--accent);
-            background: rgba(22, 163, 74, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.35);
-            display: inline-flex;
+        }
+
+        .sun-icon {
+            display: none;
+        }
+
+        .moon-icon {
+            display: block;
+        }
+
+        .dark-theme .sun-icon {
+            display: block;
+        }
+
+        .dark-theme .moon-icon {
+            display: none;
+        }
+
+        .status-badge {
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            color: var(--accent);
+            font-weight: 600;
+            display: flex;
             align-items: center;
             gap: 5px;
-            white-space: nowrap;
         }
 
-        .pill-dot {
+        .status-dot {
             width: 6px;
             height: 6px;
-            border-radius: 999px;
+            border-radius: 50%;
             background: var(--accent);
-            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+            box-shadow: 0 0 8px var(--accent);
         }
 
-        .status-card {
+        /* STATUS CARD */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             position: relative;
-            border-radius: 14px;
-            padding: 14px 12px 12px;
-            background:
-                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.35), transparent 60%),
-                radial-gradient(circle at 100% 0%, rgba(34, 197, 94, 0.4), transparent 60%),
-                linear-gradient(135deg, #0f172a, #0b1220);
             overflow: hidden;
-            display: grid;
-            grid-template-columns: 2.1fr 1.4fr;
-            gap: 8px;
         }
 
-        .status-main {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
         }
 
-        .status-title {
-            font-size: 0.7rem;
+        .card-main h2 {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
+            margin-bottom: 4px;
         }
 
-        .status-value {
-            font-size: 1.35rem;
+        .status-text {
+            font-size: 1.5rem;
             font-weight: 800;
-            letter-spacing: 0.16em;
+            color: var(--accent);
+            margin-bottom: 8px;
         }
 
-        .status-desc {
-            font-size: 0.72rem;
-            color: var(--text-soft);
-        }
-
-        .status-meta {
+        .card-meta {
             display: flex;
             gap: 8px;
-            margin-top: 6px;
         }
 
-        .status-chip {
-            padding: 3px 8px;
-            border-radius: 999px;
-            font-size: 0.68rem;
-            background: rgba(15, 23, 42, 0.85);
+        .chip {
+            font-size: 0.6rem;
+            padding: 4px 8px;
+            background: var(--ring-bg);
+            border-radius: 6px;
             color: var(--text-soft);
-            border: 1px solid rgba(148, 163, 184, 0.4);
         }
 
-        .status-gauge {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .gauge-wrap {
+            position: relative;
+            width: 80px;
+            height: 80px;
         }
 
-        .ring {
-            width: 70px;
-            height: 70px;
-            border-radius: 999px;
-            background:
-                conic-gradient(from 200deg, var(--accent) 0 280deg, rgba(31, 41, 55, 0.9) 280deg 360deg);
+        .gauge {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent) 0% 99%, var(--ring-bg) 99% 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px rgba(22, 163, 74, 0.55);
         }
 
-        .ring-inner {
-            width: 50px;
-            height: 50px;
-            border-radius: 999px;
-            background: radial-gradient(circle at 30% 0%, #22c55e, #15803d 50%, #020617 95%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #e5e7eb;
+        .gauge::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            background: var(--card-bg);
+            border-radius: 50%;
         }
 
-        .ring-score {
-            font-size: 0.95rem;
+        .gauge-value {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .gauge-num {
+            font-size: 1.25rem;
             font-weight: 700;
         }
 
-        .ring-label {
-            font-size: 0.6rem;
-            opacity: 0.9;
-        }
-
-        .section-label {
-            font-size: 0.7rem;
+        .gauge-label {
+            font-size: 0.5rem;
             text-transform: uppercase;
-            letter-spacing: 0.18em;
             color: var(--text-muted);
         }
 
-        .controls {
+        /* TOGGLES */
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin: 10px 0;
+            font-weight: 700;
+        }
+
+        .toggle-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
         }
 
         .toggle-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: 10px;
-            background: radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.18), transparent 60%),
-                rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(51, 65, 85, 0.9);
+            padding: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            transition: all 0.2s;
         }
 
-        .toggle-text {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
+        .toggle-row:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
         }
 
-        .label {
-            font-size: 0.82rem;
-            color: var(--text-main);
+        .toggle-info h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 2px;
         }
 
-        .label-sub {
-            font-size: 0.68rem;
-            color: var(--text-muted);
+        .toggle-info p {
+            font-size: 0.7rem;
+            color: var(--text-soft);
+            line-height: 1.4;
         }
 
+        /* Switch */
         .switch {
             position: relative;
             display: inline-block;
-            width: 46px;
-            height: 24px;
+            width: 36px;
+            height: 20px;
         }
 
         .switch input {
@@ -270,185 +324,157 @@
             position: absolute;
             cursor: pointer;
             inset: 0;
-            background: linear-gradient(135deg, #020617, #020617);
-            border-radius: 999px;
-            border: 1px solid rgba(75, 85, 99, 0.9);
-            transition: 0.28s ease;
+            background: #d1d5db;
+            border-radius: 20px;
+            transition: .3s;
         }
 
-        .slider::before {
+        .slider:before {
             content: "";
             position: absolute;
-            height: 18px;
-            width: 18px;
+            height: 14px;
+            width: 14px;
             left: 3px;
-            top: 2px;
-            border-radius: 999px;
-            background: radial-gradient(circle at 30% 0%, #f9fafb, #e5e7eb 45%, #9ca3af 100%);
-            box-shadow:
-                0 2px 4px rgba(15, 23, 42, 0.8),
-                0 0 0 1px rgba(148, 163, 184, 0.7);
-            transition: 0.28s ease;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: .3s;
         }
 
-        input:checked + .slider {
-            background: radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.3), transparent 60%),
-                linear-gradient(135deg, #22c55e, #16a34a);
-            border-color: rgba(34, 197, 94, 0.85);
-            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
+        input:checked+.slider {
+            background: var(--accent);
         }
 
-        input:checked + .slider::before {
-            transform: translateX(20px);
-            box-shadow:
-                0 2px 6px rgba(22, 163, 74, 0.7),
-                0 0 0 1px rgba(190, 242, 100, 0.8);
+        input:checked+.slider:before {
+            transform: translateX(16px);
         }
 
+        /* FOOTER */
         .footer {
+            margin-top: 10px;
+            padding-top: 16px;
+            border-top: 1px solid var(--card-border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 2px;
-            padding-top: 8px;
-            border-top: 1px dashed rgba(55, 65, 81, 0.8);
-        }
-
-        .footer-text {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-
-        .footer-main {
-            font-size: 0.7rem;
-            color: var(--text-soft);
-        }
-
-        .footer-sub {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--text-muted);
         }
 
-        .footer-stats {
+        .footer-logo {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 6px;
         }
 
-        .stat {
-            min-width: 60px;
-            text-align: right;
-        }
-
-        .stat-label {
-            font-size: 0.62rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.09em;
-        }
-
-        .stat-value {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-main);
+        .footer-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
         }
     </style>
 </head>
 
 <body>
-    <div class="shell">
-        <div class="container">
-            <div class="header">
-                <div class="logo-wrap">
-                    <div class="logo-badge">🛡️</div>
-                    <div class="logo-text-block">
-                        <div class="logo" id="logoLink">DeepGuard AI</div>
-                        <div class="logo-sub">Real‑time deepfake defense</div>
-                    </div>
-                </div>
-                <div class="pill">
-                    <span class="pill-dot"></span>
-                    <span>Live protection · v1.1</span>
+    <div class="container">
+        <header class="header">
+            <div class="logo-block" id="logoLink">
+                <div class="logo-icon">D</div>
+                <div class="logo-text">
+                    <h1>DeepGuard AI</h1>
+                    <p>Real-time Deepfake Defense</p>
                 </div>
             </div>
-
-            <div class="status-card" id="statusCard">
-                <div class="status-main">
-                    <div class="status-title">System posture</div>
-                    <div class="status-value">SECURE</div>
-                    <div class="status-desc">All shields are active and scanning in real time.</div>
-                    <div class="status-meta">
-                        <span class="status-chip">Stream integrity: 99.7%</span>
-                        <span class="status-chip">Anomaly score: low</span>
-                    </div>
-                </div>
-                <div class="status-gauge">
-                    <div class="ring">
-                        <div class="ring-inner">
-                            <div class="ring-score">99</div>
-                            <div class="ring-label">Score</div>
-                        </div>
-                    </div>
+            <div class="header-actions">
+                <button id="themeToggle" class="theme-btn" title="Toggle Theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    Live protection
                 </div>
             </div>
+        </header>
 
-            <div>
-                <div class="section-label">Protection layers</div>
-                <div class="controls">
-                    <div class="toggle-row">
-                        <div class="toggle-text">
-                           <span class="label">Real‑time video scan</span>
-                           <span class="label-sub">Face spoofing, frame injection &amp; playback attacks.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" checked />
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div class="toggle-text">
-                            <span class="label">Audio fraud detection</span>
-                            <span class="label-sub">Voice cloning &amp; synthetic speech anomalies.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" checked />
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div class="toggle-text">
-                            <span class="label">Head pose verification</span>
-                            <span class="label-sub">Liveness checks from micro‑motions and gaze.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" checked />
-                            <span class="slider"></span>
-                        </label>
+        <section class="card">
+            <div class="card-main">
+                <h2>System Posture</h2>
+                <div class="status-text">SECURE</div>
+                <div class="card-meta">
+                    <span class="chip">Stream: 99.7%</span>
+                    <span class="chip">Risk: Low</span>
+                </div>
+            </div>
+            <div class="gauge-wrap">
+                <div class="gauge">
+                    <div class="gauge-value">
+                        <div class="gauge-num">99</div>
+                        <div class="gauge-label">Score</div>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="footer">
-                <div class="footer-text">
-                    <span class="footer-main">Stream is being continuously analyzed.</span>
-                    <span class="footer-sub">Chrome extension is running locally; no raw media is stored.</span>
+        <div>
+            <h2 class="section-title">Security Modules</h2>
+            <div class="toggle-group">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h3>Face Synthesis Shield</h3>
+                        <p>Neutral-layer facial artifact analysis.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <div class="footer-stats">
-                    <div class="stat">
-                        <div class="stat-label">Threats</div>
-                        <div class="stat-value">0 blocked</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h3>Voice Clone Guard</h3>
+                        <p>AI speech spectrum verification.</p>
                     </div>
-                    <div class="stat">
-                        <div class="stat-label">Latency</div>
-                        <div class="stat-value">12&nbsp;ms</div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h3>Stream Injection Defense</h3>
+                        <p>Virtual camera bypass prevention.</p>
                     </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
         </div>
-    </div>
 
+        <footer class="footer">
+            <div class="footer-logo">
+                <div class="footer-dot"></div>
+                <span>DeepGuard Engine v1.2</span>
+            </div>
+            <span>© 2026 Secured by AI</span>
+        </footer>
+    </div>
     <script src="popup.js"></script>
 </body>
 

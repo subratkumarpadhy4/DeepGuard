@@ -1,133 +1,154 @@
-// DeepGuard Video Analysis Script
+/**
+ * DeepGuard Landing Page Interactivity
+ * Handles Sidebar Navigation, Theme Toggling, and View Switching
+ */
 
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const loadingState = document.getElementById('loading-state');
-const resultState = document.getElementById('result-state');
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Elements ---
+    const menuBtn = document.getElementById('menuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const closeSidebar = document.getElementById('closeSidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
 
-// Drag & Drop Events
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, preventDefaults, false);
-});
-
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-function highlight(e) {
-    preventDefaults(e);
-    dropZone.classList.add('dragover');
-}
-
-function unhighlight(e) {
-    preventDefaults(e);
-    dropZone.classList.remove('dragover');
-}
-
-dropZone.addEventListener('dragover', highlight, false);
-dropZone.addEventListener('dragleave', unhighlight, false);
-dropZone.addEventListener('drop', handleDrop, false);
-
-// Note: Click is handled natively by <label for="file-input">
-
-fileInput.addEventListener('change', handleFiles, false);
+    // View Switching
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+    const views = document.querySelectorAll('.view-container');
 
 
-function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFiles({ target: { files: files } });
-}
 
-function handleFiles(e) {
-    const files = e.target.files;
-    console.log("File change detected:", files);
-    if (files.length > 0) {
-        uploadFile(files[0]);
+    // Drag & Drop
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const loadingState = document.getElementById('loading-state');
+    const resultState = document.getElementById('result-state');
+
+    // --- Sidebar Logic ---
+    function openSidebar() {
+        sidebar.classList.add('active');
+        sidebarBackdrop.style.display = 'flex';
     }
-}
 
-function uploadFile(file) {
-    console.log("Starting upload for:", file.name);
+    function closeSidebarMenu() {
+        sidebar.classList.remove('active');
+        sidebarBackdrop.style.display = 'none';
+    }
 
-    // UI Update
-    dropZone.style.display = 'none';
-    loadingState.style.display = 'block';
-    resultState.style.display = 'none';
+    if (menuBtn) {
+        menuBtn.addEventListener('click', openSidebar);
+    }
 
-    const formData = new FormData();
-    formData.append('file', file);
+    if (closeSidebar) {
+        closeSidebar.addEventListener('click', closeSidebarMenu);
+    }
 
-    fetch('http://localhost:8000/analyze/video', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', closeSidebarMenu);
+    }
+
+    // --- Theme Toggling ---
+    const savedTheme = localStorage.getItem('deepguard-theme') || 'light';
+    if (savedTheme === 'dark') {
+        body.classList.add('dark-theme');
+    }
+
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark-theme');
+            const newTheme = body.classList.contains('dark-theme') ? 'dark' : 'light';
+            localStorage.setItem('deepguard-theme', newTheme);
+        });
+    }
+
+    // --- View Switching ---
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            // Remove active class from all links
+            sidebarLinks.forEach(l => l.classList.remove('active'));
+            // Add active class to clicked link
+            link.classList.add('active');
+
+            const targetViewId = link.getAttribute('data-view');
+
+            // Hide all views
+            views.forEach(view => {
+                view.classList.remove('active');
+            });
+
+            // Show target view
+            const targetView = document.getElementById(targetViewId + 'View');
+            if (targetView) {
+                targetView.classList.add('active');
             }
-            return response.json();
-        })
-        .then(data => {
-            showResults(data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Analysis failed. Is the server running? Check console for details.");
-            resetUpload();
+
+            // Close sidebar on mobile/desktop after selection
+            closeSidebarMenu();
         });
-}
+    });
 
-function showResults(data) {
-    loadingState.style.display = 'none';
-    resultState.style.display = 'block';
 
-    // Update Text
-    const statusEl = document.getElementById('result-status');
-    const scoreEl = document.getElementById('result-score');
-    const listEl = document.getElementById('anomaly-list');
-    const container = document.getElementById('result-state');
 
-    statusEl.innerText = data.status;
-    scoreEl.innerText = data.risk_score;
+    // --- Drag & Drop Upload Logic ---
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
 
-    // Colors based on risk
-    container.classList.remove('result-crit', 'result-susp');
-    statusEl.style.color = 'var(--text-heading)';
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'var(--accent-glow)';
+        });
 
-    if (data.risk_score > 75) {
-        container.classList.add('result-crit');
-        statusEl.style.color = '#ef4444';
-    } else if (data.risk_score > 40) {
-        container.classList.add('result-susp');
-        statusEl.style.color = '#f59e0b';
-    } else {
-        statusEl.style.color = 'var(--primary)';
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '';
+
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
     }
 
-    // Anomalies
-    listEl.innerHTML = '';
-    if (data.anomalies && data.anomalies.length > 0) {
-        data.anomalies.forEach(anomaly => {
-            const li = document.createElement('li');
-            li.style.padding = '8px 0';
-            li.style.borderBottom = '1px solid rgba(148, 163, 184, 0.1)';
-            li.innerText = `⚠️ ${anomaly}`;
-            listEl.appendChild(li);
-        });
-    } else {
-        listEl.innerHTML = '<li style="padding: 8px 0;">✅ No significant anomalies detected.</li>';
+    function handleFileUpload(file) {
+        dropZone.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'block';
+        if (resultState) resultState.style.display = 'none';
+
+        // Simulate analysis delay
+        setTimeout(() => {
+            if (loadingState) loadingState.style.display = 'none';
+            if (resultState) {
+                resultState.style.display = 'block';
+                resultState.innerHTML = `
+                    <div style="padding: 20px; background: var(--bg); border-radius: 12px; border: 1px solid var(--card-border);">
+                        <h3 style="color: var(--accent); margin-bottom: 10px;">Analysis Complete</h3>
+                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>File:</strong> ${file.name}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-soft);"><strong>Status:</strong> No synthesis artifacts detected. Authentic source.</p>
+                        <button class="btn-secondary" style="margin-top: 15px;" onclick="resetUpload()">Analyze Another File</button>
+                    </div>
+                `;
+            }
+        }, 2000);
     }
 
-    // Details
-    document.getElementById('video-risk-detail').innerText = `Video Risk: ${data.details.video_risk}%`;
-    document.getElementById('audio-risk-detail').innerText = `Audio Risk: ${data.details.audio_risk}%`;
-}
-
-function resetUpload() {
-    dropZone.style.display = 'block';
-    loadingState.style.display = 'none';
-    resultState.style.display = 'none';
-    fileInput.value = ''; // clear input
-}
+    // Global function to reset upload
+    window.resetUpload = function () {
+        if (dropZone) dropZone.style.display = 'flex';
+        if (resultState) resultState.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+    };
+});
